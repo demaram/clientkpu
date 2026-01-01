@@ -11,7 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'client.auth' => \App\Http\Middleware\ClientAuth::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'role' => \App\Http\Middleware\LaravelEntrustRole::class,
+            'permission' => \App\Http\Middleware\LaravelEntrustPermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

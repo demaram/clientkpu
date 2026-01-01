@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'title' => 'KP Usahatama',
+    'title' => 'KPUsahatama',
     'title_prefix' => '',
     'title_postfix' => ' - Admin Portal',
 
@@ -68,7 +68,7 @@ return [
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-xs',
-    'logo_img_alt' => 'KP Usahatama Logo',
+    'logo_img_alt' => 'KPUsahatama Logo',
 
     /*
     |--------------------------------------------------------------------------
@@ -257,12 +257,12 @@ return [
     */
 
     'use_route_url' => false,
-    'dashboard_url' => 'home',
+    'dashboard_url' => 'admin/dashboard',
     'logout_url' => 'logout',
     'login_url' => 'login',
-    'register_url' => 'register',
-    'password_reset_url' => 'password/reset',
-    'password_email_url' => 'password/email',
+    'register_url' => false,
+    'password_reset_url' => false,
+    'password_email_url' => false,
     'profile_url' => false,
     'disable_darkmode_routes' => false,
 
@@ -323,14 +323,14 @@ return [
         ],
         ['header' => 'Manajemen'],
         [
-            'text' => 'Users',
-            'url' => 'admin/users',
-            'icon' => 'fas fa-fw fa-users',
+            'text' => 'Lembur',
+            'url' => 'admin/lembur',
+            'icon' => 'fas fa-fw fa-clock',
         ],
         [
-            'text' => 'Settings',
-            'url' => 'admin/settings',
-            'icon' => 'fas fa-fw fa-cog',
+            'text' => 'SPPD',
+            'url' => 'admin/sppd',
+            'icon' => 'fas fa-fw fa-plane',
         ],
         ['header' => 'Account'],
         [

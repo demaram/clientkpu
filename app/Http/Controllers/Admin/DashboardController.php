@@ -4,22 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    /**
-     * Create a new controller instance.
-     */
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
+    
     /**
      * Show the admin dashboard.
      */
     public function index()
     {
-        return view('admin.dashboard');
+        $user = Auth::user();
+        
+        return view('admin.dashboard', [
+            'user' => $user
+        ]);
     }
 }
