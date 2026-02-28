@@ -12,7 +12,7 @@ class PayrollApiService
 
     public function __construct()
     {
-        $this->baseUrl = env('PAYROLL_API_URL', 'https://sip-dev.kpusahatama.id/api');
+        $this->baseUrl = env('PAYROLL_URL', 'https://sip-dev.kpusahatama.id/');
         $this->timeout = 30;
     }
 

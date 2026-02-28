@@ -17,6 +17,7 @@ return [
     'title' => 'KPUsahatama',
     'title_prefix' => '',
     'title_postfix' => ' - Admin Portal',
+    'title_logo' => 'logo2.webp',
 
     /*
     |--------------------------------------------------------------------------
@@ -30,8 +31,8 @@ return [
     |
     */
 
-    'use_ico_only' => false,
-    'use_full_favicon' => false,
+    'use_ico_only' => true,
+    'use_full_favicon' => true,
 
     /*
     |--------------------------------------------------------------------------
@@ -63,11 +64,11 @@ return [
     |
     */
 
-    'logo' => '<b>KP</b> Usahatama',
-    'logo_img' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
-    'logo_img_class' => 'brand-image img-circle elevation-3',
+    'logo' => 'KPUsahatama',
+    'logo_img' => 'logo2.webp',
+    'logo_img_class' => 'brand-image img-circle',
     'logo_img_xl' => null,
-    'logo_img_xl_class' => 'brand-image-xs',
+    'logo_img_xl_class' => 'brand-image-sm',
     'logo_img_alt' => 'KPUsahatama Logo',
 
     /*
@@ -84,13 +85,13 @@ return [
     */
 
     'auth_logo' => [
-        'enabled' => false,
+        'enabled' => true,
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
-            'alt' => 'Auth Logo',
+            'path' => 'logo2.webp',
+            'alt' => 'KPUsahatama Logo',
             'class' => '',
-            'width' => 50,
-            'height' => 50,
+            'width' => 100,
+            'height' => 125,
         ],
     ],
 
@@ -113,11 +114,11 @@ return [
         'enabled' => true,
         'mode' => 'fullscreen',
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
+            'path' => 'logo.png',
             'alt' => 'AdminLTE Preloader Image',
             'effect' => 'animation__shake',
-            'width' => 60,
-            'height' => 60,
+            'width' => 400,
+            'height' => 200,
         ],
     ],
 
@@ -328,10 +329,16 @@ return [
             'icon' => 'fas fa-fw fa-clock',
         ],
         [
+            'text' => 'Piket',
+            'url' => 'admin/piket',
+            'icon' => 'fas fa-fw fa-calendar-check',
+        ],
+        [
             'text' => 'SPPD',
             'url' => 'admin/sppd',
             'icon' => 'fas fa-fw fa-plane',
         ],
+        
         ['header' => 'Account'],
         [
             'text' => 'Profile',

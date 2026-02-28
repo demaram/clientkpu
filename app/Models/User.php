@@ -52,4 +52,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany('App\Models\Role','role_user')->withPivot('role_id','user_id'); //,'assigned_roles'
     }
+
+    public function areas()
+    {
+        return $this->belongsToMany('App\Models\MasterArea', 'user_area', 'user_id', 'area_id');
+    }
 }

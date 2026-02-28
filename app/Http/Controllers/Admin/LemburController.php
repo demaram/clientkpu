@@ -2,80 +2,33 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Datatables\LemburDatatable;
 use App\Http\Controllers\Controller;
 use App\Models\LemburKaryawan;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Services\SubscriptionCipherService;
 
 class LemburController extends Controller
 {
+    protected SubscriptionCipherService $subscriptionCipher;
+
+    public function __construct(SubscriptionCipherService $subscriptionCipher)
+    {
+        $this->subscriptionCipher = $subscriptionCipher;
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request, LemburDatatable $lemburDatatable)
     {
         if ($request->ajax()) {
-            // Get user's client_id
-            $user = Auth::user();
-            $clientId = $user->id_client ?? null;
-
-            // Query lembur karyawan with client_id filter
-            $data = LemburKaryawan::with(['user', 'client'])
-                ->when($clientId, function ($query) use ($clientId) {
-                    return $query->where('client_id', $clientId);
-                })
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('karyawan', function ($row) {
-                    $user = $row->user;
-                    return $user ? $user->first_name . ' ' . $user->last_name : '-';
-                })
-                ->addColumn('client', function ($row) {
-                    return $row->client ? $row->client->description : '-';
-                })
-                ->addColumn('tanggal', function ($row) {
-                    return date('d/m/Y', strtotime($row->start));
-                })
-                ->addColumn('waktu', function ($row) {
-                    $start = date('H:i', strtotime($row->start));
-                    $end = $row->end ? date('H:i', strtotime($row->end)) : '-';
-                    return $start . ' - ' . $end;
-                })
-                ->addColumn('status_badge', function ($row) {
-                    $badges = [
-                        'pending' => '<span class="badge badge-warning">Pending</span>',
-                        'approved' => '<span class="badge badge-success">Approved</span>',
-                        'rejected' => '<span class="badge badge-danger">Rejected</span>',
-                    ];
-                    return $badges[$row->status] ?? '<span class="badge badge-secondary">' . ucfirst($row->status) . '</span>';
-                })
-                ->addColumn('action', function ($row) {
-                    $buttons = '<div class="btn-group" role="group">';
-                    
-                    // Detail button
-                    $buttons .= '<button type="button" class="btn btn-sm btn-info" onclick="detailLembur(' . $row->id . ')" title="Detail">
-                        <i class="fas fa-eye"></i>
-                    </button>';
-                    
-                    // Only show approve/reject if status is pending
-                    if ($row->status === 'pending') {
-                        $buttons .= '<button type="button" class="btn btn-sm btn-success" onclick="approveLembur(' . $row->id . ')" title="Approve">
-                            <i class="fas fa-check"></i>
-                        </button>';
-                        $buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
-                            <i class="fas fa-times"></i>
-                        </button>';
-                    }
-                    
-                    $buttons .= '</div>';
-                    return $buttons;
-                })
-                ->rawColumns(['status_badge', 'action'])
-                ->make(true);
+            return $lemburDatatable->render($request);
         }
 
         return view('admin.lembur.index');
@@ -90,34 +43,73 @@ class LemburController extends Controller
             ->findOrFail($id);
 
         // Check if user has access to this lembur data
-        $user = Auth::user();
+        $user = User::with('areas')->find(Auth::id());
         if ($user->id_client && $lembur->client_id != $user->id_client) {
             abort(403, 'Unauthorized access');
         }
 
+        // Generate photo URLs using custom_public disk
+        $startPhotoUrl = null;
+        if ($lembur->start_photo) {
+            if (Storage::disk('custom_public')->exists($lembur->start_photo)) {
+                $startPhotoUrl = Storage::disk('custom_public')->url($lembur->start_photo);
+            }
+        }
+
+        $endPhotoUrl = null;
+        if ($lembur->end_photo) {
+            if (Storage::disk('custom_public')->exists($lembur->end_photo)) {
+                $endPhotoUrl = Storage::disk('custom_public')->url($lembur->end_photo);
+            }
+        }
+
+        // Calculate duration
+        $durasi = '-';
+        if ($lembur->start && $lembur->end) {
+            $startTime = strtotime($lembur->start);
+            $endTime = strtotime($lembur->end);
+            $durasiDetik = $endTime - $startTime;
+            
+            $hours = floor($durasiDetik / 3600);
+            $minutes = floor(($durasiDetik % 3600) / 60);
+            
+            $durasi = $hours . ' jam ' . $minutes . ' menit';
+        }
+
+        // Get employee details
+        $karyawan = $lembur->user;
+        $empId = $karyawan->emp_id ?? '-';
+        $jabatan = $karyawan->jabatan ?? '-';
+        $nomorRekening = $karyawan->no_rekening ?? '-';
+
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $lembur->id,
-                'karyawan' => $lembur->user ? $lembur->user->first_name . ' ' . $lembur->user->last_name : '-',
-                'client' => $lembur->client ? $lembur->client->description : '-',
-                'type' => ucfirst($lembur->type),
-                'alasan' => $lembur->alasan,
-                'start' => date('d/m/Y H:i', strtotime($lembur->start)),
-                'end' => $lembur->end ? date('d/m/Y H:i', strtotime($lembur->end)) : '-',
-                'status' => ucfirst($lembur->status),
-                'overtime_pay' => $lembur->overtime_pay ? 'Rp ' . number_format($lembur->overtime_pay, 0, ',', '.') : '-',
-                'start_photo' => $lembur->start_photo,
-                'end_photo' => $lembur->end_photo,
+                'id'                => $lembur->id,
+                'client'            => $lembur->client->nama ?? '-',
+                'karyawan'          => $karyawan ? $karyawan->first_name . ' ' . $karyawan->last_name : '-',
+                'empid'             => $empId,
+                'jabatan'           => $jabatan,
+                'rekening'          => $nomorRekening,
+                'type'              => ucfirst($lembur->type),
+                'tanggal'           => date('d/m/Y', strtotime($lembur->start)),
+                'start_time'        => date('H:i', strtotime($lembur->start)),
+                'end_time'          => $lembur->end ? date('H:i', strtotime($lembur->end)) : '-',
+                'durasi'            => $durasi,
+                'overtime_pay'      => $lembur->overtime_pay ? 'Rp ' . number_format($lembur->overtime_pay, 0, ',', '.') : '-',
+                'status'            => ucfirst($lembur->status),
+                'alasan'            => $lembur->alasan ?? '-',
+                'start_photo'       => $startPhotoUrl,
+                'end_photo'         => $endPhotoUrl,
                 'check_in_location' => $lembur->checkInLocation ? [
-                    'latitude' => $lembur->checkInLocation->latitude,
+                    'latitude'  => $lembur->checkInLocation->latitude,
                     'longitude' => $lembur->checkInLocation->longitude,
-                    'address' => $lembur->checkInLocation->address,
+                    'address'   => $lembur->checkInLocation->address,
                 ] : null,
                 'check_out_location' => $lembur->checkOutLocation ? [
-                    'latitude' => $lembur->checkOutLocation->latitude,
+                    'latitude'  => $lembur->checkOutLocation->latitude,
                     'longitude' => $lembur->checkOutLocation->longitude,
-                    'address' => $lembur->checkOutLocation->address,
+                    'address'   => $lembur->checkOutLocation->address,
                 ] : null,
             ]
         ]);
@@ -139,20 +131,67 @@ class LemburController extends Controller
             ], 403);
         }
 
-        if ($lembur->status !== 'pending') {
+        if ($lembur->status !== 'waiting_approval') {
             return response()->json([
                 'success' => false,
                 'message' => 'Lembur sudah diproses sebelumnya'
             ]);
         }
 
-        $lembur->status = 'approved';
-        $lembur->save();
+        $payrollBaseUrl = rtrim(config('services.payroll.api_url'));
+        
+        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
+        
+        if (!$payrollBaseUrl || !$subscriptionKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
+            ], 500);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Lembur berhasil di-approve'
-        ]);
+        $endpoint = 'api/data-lembur/approve/' . $id;
+        
+        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
+        
+        if (empty($headers['X-Subscription-Encrypted'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengenkripsi subscription payload'
+            ], 500);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->post($payrollBaseUrl . $endpoint);
+            
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response->json('message') ?? 'Gagal approve lembur ke Payroll API'
+                ], $response->status());
+            }
+
+            $lembur->status = 'approved';
+            $lembur->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => $response->json('message') ?? 'Lembur berhasil di-approve',
+                'data' => $response->json('data')
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Approve lembur payroll API gagal', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
+            ], 500);
+        }
     }
 
     /**
@@ -171,19 +210,64 @@ class LemburController extends Controller
             ], 403);
         }
 
-        if ($lembur->status !== 'pending') {
+        if ($lembur->status !== 'waiting_approval') {
             return response()->json([
                 'success' => false,
                 'message' => 'Lembur sudah diproses sebelumnya'
             ]);
         }
 
-        $lembur->status = 'rejected';
-        $lembur->save();
+        $payrollBaseUrl = config('services.payroll.api_url');
+        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
+        
+        if (!$payrollBaseUrl || !$subscriptionKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
+            ], 500);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Lembur berhasil di-reject'
-        ]);
+        $endpoint = 'api/data-lembur/reject/' . $id;
+        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
+        
+        if (empty($headers['X-Subscription-Encrypted'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengenkripsi subscription payload'
+            ], 500);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->post($payrollBaseUrl . $endpoint);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response->json('message') ?? 'Gagal reject lembur ke Payroll API'
+                ], $response->status());
+            }
+
+            $lembur->status = 'rejected';
+            $lembur->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => $response->json('message') ?? 'Lembur berhasil di-reject',
+                'data' => $response->json('data')
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Reject lembur payroll API gagal', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
+            ], 500);
+        }
     }
 }

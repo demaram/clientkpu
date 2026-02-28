@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'payroll' => [
+        'api_url' => env('PAYROLL_URL', env('PAYROLL_URL')),
+        'subscription_key' => env('SUBSCRIPTION_KEY'),
+    ],
+
 ];

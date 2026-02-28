@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Client;
 
 class LemburKaryawan extends Model
 {
@@ -15,6 +16,7 @@ class LemburKaryawan extends Model
         'client_id',
         'spk_id',
         'type',
+        'kode',
         'alasan',
         'start',
         'end',
@@ -38,7 +40,7 @@ class LemburKaryawan extends Model
 
     public function client()
     {
-          return $this->belongsTo('App\Models\Client','client_id');
+          return $this->belongsTo(Client::class,'client_id');
     }
 
     /**

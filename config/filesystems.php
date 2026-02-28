@@ -47,6 +47,18 @@ return [
             'report' => false,
         ],
 
+        'custom_storage' => [
+            'driver' => 'local',
+            'root' => '/var/www/html/kpusahatama/'.config('app.env').'/storage/app',
+        ],
+
+        'custom_public' => [
+            'driver' => 'local',
+            'root' => '/var/www/html/kpusahatama/'.config('app.env').'/storage/app/public',
+            'url' => env('APP_URL').'/storage',
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

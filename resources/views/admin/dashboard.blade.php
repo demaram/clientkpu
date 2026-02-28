@@ -67,74 +67,54 @@
 
     <div class="row">
         <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-info">
-                <div class="inner">
-                    <h3>-</h3>
-                    <p>Projects</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-briefcase"></i>
-                </div>
-                <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-success">
-                <div class="inner">
-                    <h3>-</h3>
-                    <p>Employees</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <!-- small box -->
             <div class="small-box bg-warning">
                 <div class="inner">
-                    <h3>-</h3>
-                    <p>Payroll</p>
+                    <h3>{{ $lemburCounts['pending'] ?? 0 }}</h3>
+                    <p>On Process</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-money-bill"></i>
+                    <i class="fas fa-clock"></i>
                 </div>
-                <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
             </div>
         </div>
 
         <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-danger">
+            <div class="small-box bg-secondary">
                 <div class="inner">
-                    <h3>-</h3>
-                    <p>Reports</p>
+                    <h3>{{ $lemburCounts['waiting_approval'] ?? 0 }}</h3>
+                    <p>Waiting Approval</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-chart-pie"></i>
+                    <i class="fas fa-hourglass-half"></i>
                 </div>
-                <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
             </div>
-        </div>
-    </div>
         </div>
 
         <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-danger">
+            <div class="small-box bg-success">
                 <div class="inner">
-                    <h3>65</h3>
-                    <p>Unique Visitors</p>
+                    <h3>{{ $lemburCounts['approved'] ?? 0 }}</h3>
+                    <p>Approved</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-chart-pie"></i>
+                    <i class="fas fa-check-circle"></i>
                 </div>
-                <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-danger">
+                <div class="inner">
+                    <h3>{{ $lemburCounts['rejected'] ?? 0 }}</h3>
+                    <p>Rejected</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
             </div>
         </div>
     </div>
@@ -146,7 +126,7 @@
                     <h3 class="card-title">Selamat Datang di Dashboard Admin</h3>
                 </div>
                 <div class="card-body">
-                    <p>Ini adalah portal admin dashboard menggunakan Laravel dan AdminLTE.</p>
+                    <p>Ini adalah Portal Client Kpusahatama.</p>
                     <p>Anda telah berhasil login ke sistem. Gunakan menu di sebelah kiri untuk navigasi.</p>
                 </div>
             </div>

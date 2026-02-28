@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Data Lembur')
+@section('title', 'Data Piket')
 
 @section('content_header')
-    <h1>Data Lembur Karyawan</h1>
+    <h1>Data Piket Karyawan</h1>
 @stop
 
 @section('content')
@@ -25,7 +25,7 @@
 
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Filter Data Lembur</h3>
+            <h3 class="card-title">Filter Data Piket</h3>
         </div>
         <div class="card-body">
             <div class="row">
@@ -65,11 +65,11 @@
 
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Daftar Lembur</h3>
+            <h3 class="card-title">Daftar Piket</h3>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="lemburTable" class="table table-bordered table-striped">
+                <table id="piketTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
                             <th width="5%">No</th>
@@ -78,21 +78,12 @@
                             <th>Kode</th>
                             <th>Tanggal</th>
                             <th>Waktu</th>
-                            <th>Durasi</th>
-                            <th>Terhitung</th>
                             <th>Alasan</th>
                             <th>Status</th>
                             <th>Overtime Pay</th>
                             <th width="15%">Action</th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th colspan="6" class="text-right">Total Durasi (data terfilter):</th>
-                            <th id="totalDurasiCell">0 jam 0 menit</th>
-                            <th colspan="4"></th>
-                        </tr>
-                    </tfoot>
                     <tbody>
                     </tbody>
                 </table>
@@ -100,7 +91,7 @@
         </div>
     </div>
 
-    @include('admin.lembur._detail_modal')
+    @include('admin.piket._detail_modal')
 @stop
 
 @section('css')
@@ -111,8 +102,8 @@
             margin-right: 2px;
         }
 
-        #lemburTable th,
-        #lemburTable td {
+        #piketTable th,
+        #piketTable td {
             white-space: nowrap;
         }
     </style>
@@ -173,25 +164,19 @@
                 table.ajax.reload();
             });
 
-            let totalDurasiLabel = '0 jam 0 menit';
-
             // Initialize DataTable
-            var table = $('#lemburTable').DataTable({
+            var table = $('#piketTable').DataTable({
                 processing: true,
                 serverSide: true,
                 scrollX: true,
                 scrollCollapse: true,
                 ajax: {
-                    url: '{{ route("admin.lembur.index") }}',
+                    url: '{{ route("admin.piket.index") }}',
                     data: function(d) {
                         d.nama_karyawan = $('#filterNama').val();
                         d.start_date = $('#filterStart').val();
                         d.end_date = $('#filterEnd').val();
                         d.status = $('#filterStatus').val();
-                    },
-                    dataSrc: function(json) {
-                        totalDurasiLabel = json.total_durasi_label || '0 jam 0 menit';
-                        return json.data;
                     }
                 },
                 columns: [
@@ -201,16 +186,11 @@
                     {data: 'kode', name: 'kode'},
                     {data: 'tanggal', name: 'tanggal'},
                     {data: 'waktu', name: 'waktu'},
-                    {data: 'durasi', name: 'durasi', searchable: false},
-                    {data: 'counted_hours', name: 'counted_hours',},
                     {data: 'alasan', name: 'alasan'},
                     {data: 'status_badge', name: 'status'},
                     {data: 'overtime_pay', name: 'overtime_pay'},
                     {data: 'action', name: 'action', orderable: false, searchable: false}
                 ],
-                drawCallback: function() {
-                    $('#totalDurasiCell').text(totalDurasiLabel);
-                },
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json'
                 }
@@ -242,13 +222,13 @@
             });
         });
 
-        // Detail Lembur
-        function detailLembur(id) {
-            // Store the current lembur ID for approve/reject actions
-            $('#detailModal').data('lembur-id', id);
+        // Detail piket
+        function detailPiket(id) {
+            // Store the current piket ID for approve/reject actions
+            $('#detailModal').data('piket-id', id);
             
             $.ajax({
-                url: '{{ url("admin/lembur") }}/' + id,
+                url: '{{ url("admin/piket") }}/' + id,
                 type: 'GET',
                 success: function(response) {
                     if (response.success) {
@@ -261,7 +241,7 @@
                         $('#detail-jabatan').text(data.jabatan || '-');
                         $('#detail-rekening').text(data.rekening || '-');
                         
-                        // Informasi Lembur
+                        // Informasi piket
                         $('#detail-type').text(data.type || '-');
                         $('#detail-tanggal').text(data.tanggal || '-');
                         $('#detail-durasi').text(data.durasi || '-');
@@ -322,14 +302,14 @@
             });
         }
 
-        // Approve Lembur
-        function approveLembur(id) {
-            if (!confirm('Apakah Anda yakin ingin approve lembur ini?')) {
+        // Approve piket
+        function approvePiket(id) {
+            if (!confirm('Apakah Anda yakin ingin approve piket ini?')) {
                 return;
             }
 
             $.ajax({
-                url: '{{ url("admin/lembur") }}/' + id + '/approve',
+                url: '{{ url("admin/piket") }}/' + id + '/approve',
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}'
@@ -337,25 +317,25 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.message);
-                        $('#lemburTable').DataTable().ajax.reload();
+                        $('#piketTable').DataTable().ajax.reload();
                     } else {
                         alert(response.message);
                     }
                 },
                 error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal approve lembur'));
+                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal approve piket'));
                 }
             });
         }
 
-        // Reject Lembur
-        function rejectLembur(id) {
-            if (!confirm('Apakah Anda yakin ingin reject lembur ini?')) {
+        // Reject piket
+        function rejectPiket(id) {
+            if (!confirm('Apakah Anda yakin ingin reject piket ini?')) {
                 return;
             }
 
             $.ajax({
-                url: '{{ url("admin/lembur") }}/' + id + '/reject',
+                url: '{{ url("admin/piket") }}/' + id + '/reject',
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}'
@@ -363,32 +343,32 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.message);
-                        $('#lemburTable').DataTable().ajax.reload();
+                        $('#piketTable').DataTable().ajax.reload();
                     } else {
                         alert(response.message);
                     }
                 },
                 error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal reject lembur'));
+                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal reject Piket'));
                 }
             });
         }
 
         // Approve from Modal
         function approveFromModal() {
-            var id = $('#detailModal').data('lembur-id');
+            var id = $('#detailModal').data('piket-id');
             if (id) {
                 $('#detailModal').modal('hide');
-                approveLembur(id);
+                approvePiket(id);
             }
         }
 
         // Reject from Modal
         function rejectFromModal() {
-            var id = $('#detailModal').data('lembur-id');
+            var id = $('#detailModal').data('piket-id');
             if (id) {
                 $('#detailModal').modal('hide');
-                rejectLembur(id);
+                rejectPiket(id);
             }
         }
     </script>
