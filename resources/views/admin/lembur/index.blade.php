@@ -271,6 +271,12 @@
                             '">' + data.status + '</span>');
                         $('#detail-alasan').text(data.alasan || '-');
                         
+                        // Live lembur statistics
+                        $('#detail-monthly-hours').text(data.monthly_counted_hours || '0 jam 0 menit');
+                        $('#detail-monthly-period').text(data.monthly_period || '-');
+                        $('#detail-weekly-hours').text(data.weekly_counted_hours || '0 jam 0 menit');
+                        $('#detail-weekly-period').text(data.weekly_period || '-');
+                        
                         // Check-in Details
                         $('#detail-start').text(data.start_time || '-');
                         

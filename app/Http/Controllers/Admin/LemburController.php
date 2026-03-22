@@ -6,6 +6,7 @@ use App\Datatables\LemburDatatable;
 use App\Http\Controllers\Controller;
 use App\Models\LemburKaryawan;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -82,6 +83,26 @@ class LemburController extends Controller
         $jabatan = $karyawan->jabatan ?? '-';
         $nomorRekening = $karyawan->no_rekening ?? '-';
 
+        // Live lembur statistics (approved only)
+        $lemburDate = Carbon::parse($lembur->start);
+
+        $monthlyCountedHours = (float) LemburKaryawan::where('user_id', $lembur->user_id)
+            ->where('status', 'approved')
+            ->whereRaw('YEAR(start) = ? AND MONTH(start) = ?', [$lemburDate->year, $lemburDate->month])
+            ->sum('counted_hours');
+
+        $weeklyCountedHours = (float) LemburKaryawan::where('user_id', $lembur->user_id)
+            ->where('status', 'approved')
+            ->whereRaw('YEARWEEK(start, 1) = YEARWEEK(?, 1)', [$lemburDate->format('Y-m-d')])
+            ->sum('counted_hours');
+
+        $formatHours = function (float $hours): string {
+            $totalMinutes = (int) round($hours * 60);
+            $h = intdiv($totalMinutes, 60);
+            $m = $totalMinutes % 60;
+            return $h . ' jam ' . $m . ' menit';
+        };
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -111,6 +132,10 @@ class LemburController extends Controller
                     'longitude' => $lembur->checkOutLocation->longitude,
                     'address'   => $lembur->checkOutLocation->address,
                 ] : null,
+                'monthly_counted_hours' => $formatHours($monthlyCountedHours),
+                'weekly_counted_hours'  => $formatHours($weeklyCountedHours),
+                'monthly_period'        => $lemburDate->translatedFormat('F Y'),
+                'weekly_period'         => 'Minggu ke-' . $lemburDate->weekOfYear . ' ' . $lemburDate->year,
             ]
         ]);
     }

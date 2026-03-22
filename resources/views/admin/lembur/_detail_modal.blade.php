@@ -80,6 +80,34 @@
                                 <p id="detail-alasan" class="mb-0">-</p>
                             </div>
                         </div>
+
+                        <div class="card mt-3 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Rekapitulasi Lembur (Approved)</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <tr class="bg-light">
+                                        <th class="pl-3" width="55%"><i class="fas fa-calendar-alt text-muted mr-1"></i> Jam / Bulan</th>
+                                        <td class="font-weight-bold text-primary" id="detail-monthly-hours">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="py-0 pl-3">
+                                            <small class="text-muted" id="detail-monthly-period">-</small>
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-light">
+                                        <th class="pl-3"><i class="fas fa-calendar-week text-muted mr-1"></i> Jam / Minggu</th>
+                                        <td class="font-weight-bold text-primary" id="detail-weekly-hours">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="py-0 pl-3">
+                                            <small class="text-muted" id="detail-weekly-period">-</small>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Check-in & Check-out Details -->

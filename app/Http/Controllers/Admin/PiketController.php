@@ -5,12 +5,22 @@ namespace App\Http\Controllers\Admin;
 use App\Datatables\PiketDatatable;
 use App\Http\Controllers\Controller;
 use App\Models\LemburKaryawan;
+use App\Services\SubscriptionCipherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class PiketController extends Controller
 {
+    protected SubscriptionCipherService $subscriptionCipher;
+
+    public function __construct(SubscriptionCipherService $subscriptionCipher)
+    {
+        $this->subscriptionCipher = $subscriptionCipher;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -127,13 +137,58 @@ class PiketController extends Controller
             ]);
         }
 
-        $piket->status = 'approved';
-        $piket->save();
+        $payrollBaseUrl = rtrim(config('services.payroll.api_url'));
+        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Piket berhasil di-approve'
-        ]);
+        if (!$payrollBaseUrl || !$subscriptionKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
+            ], 500);
+        }
+
+        $endpoint = 'api/data-piket/approve/' . $id;
+        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
+
+        if (empty($headers['X-Subscription-Encrypted'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengenkripsi subscription payload'
+            ], 500);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->post($payrollBaseUrl . $endpoint);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response->json('message') ?? 'Gagal approve piket ke Payroll API'
+                ], $response->status());
+            }
+
+            $piket->status = 'approved';
+            $piket->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => $response->json('message') ?? 'Piket berhasil di-approve',
+                'data' => $response->json('data')
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Approve piket payroll API gagal', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
+            ], 500);
+        }
     }
 
     /**
@@ -159,12 +214,57 @@ class PiketController extends Controller
             ]);
         }
 
-        $piket->status = 'rejected';
-        $piket->save();
+        $payrollBaseUrl = config('services.payroll.api_url');
+        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Piket berhasil di-reject'
-        ]);
+        if (!$payrollBaseUrl || !$subscriptionKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
+            ], 500);
+        }
+
+        $endpoint = 'api/data-piket/reject/' . $id;
+        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
+
+        if (empty($headers['X-Subscription-Encrypted'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengenkripsi subscription payload'
+            ], 500);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->post($payrollBaseUrl . $endpoint);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response->json('message') ?? 'Gagal reject piket ke Payroll API'
+                ], $response->status());
+            }
+
+            $piket->status = 'rejected';
+            $piket->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => $response->json('message') ?? 'Piket berhasil di-reject',
+                'data' => $response->json('data')
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Reject piket payroll API gagal', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
+            ], 500);
+        }
     }
 }
