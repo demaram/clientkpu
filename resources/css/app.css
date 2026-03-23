@@ -9,3 +9,19 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Global DataTable: smaller font & tighter rows */
+table.dataTable thead th,
+table.dataTable thead td,
+table.dataTable tbody th,
+table.dataTable tbody td,
+table.dataTable tfoot th,
+table.dataTable tfoot td {
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+}
+
+table.dataTable thead th,
+table.dataTable tfoot th {
+    font-weight: 600 !important;
+}

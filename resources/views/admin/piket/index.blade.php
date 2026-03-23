@@ -78,6 +78,8 @@
                             <th>Kode</th>
                             <th>Tanggal</th>
                             <th>Waktu</th>
+                            <th>Durasi</th>
+                            <th>Terhitung</th>
                             <th>Alasan</th>
                             <th>Status</th>
                             <th>Overtime Pay</th>
@@ -100,6 +102,10 @@
     <style>
         .btn-group .btn {
             margin-right: 2px;
+        }
+
+        #piketTable {
+            width: 100% !important;
         }
 
         #piketTable th,
@@ -168,8 +174,7 @@
             var table = $('#piketTable').DataTable({
                 processing: true,
                 serverSide: true,
-                scrollX: true,
-                scrollCollapse: true,
+                autoWidth: false,
                 ajax: {
                     url: '{{ route("admin.piket.index") }}',
                     data: function(d) {
@@ -186,6 +191,8 @@
                     {data: 'kode', name: 'kode'},
                     {data: 'tanggal', name: 'tanggal'},
                     {data: 'waktu', name: 'waktu'},
+                    {data: 'durasi', name: 'durasi', searchable: false},
+                    {data: 'counted_hours', name: 'counted_hours'},
                     {data: 'alasan', name: 'alasan'},
                     {data: 'status_badge', name: 'status'},
                     {data: 'overtime_pay', name: 'overtime_pay'},

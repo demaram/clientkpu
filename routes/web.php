@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LemburController;
 use App\Http\Controllers\Admin\PiketController;
+use App\Http\Controllers\Admin\GantiPasswordController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\LoginController;
 
 // Redirect root ke login
@@ -37,4 +39,11 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::post('/{id}/approve', [PiketController::class, 'approve'])->name('admin.piket.approve');
         Route::post('/{id}/reject', [PiketController::class, 'reject'])->name('admin.piket.reject');
     });
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'index'])->name('admin.profile.index');
+
+    // Ganti Password
+    Route::get('/ganti-password', [GantiPasswordController::class, 'index'])->name('admin.ganti-password.index');
+    Route::post('/ganti-password', [GantiPasswordController::class, 'update'])->name('admin.ganti-password.update');
 });

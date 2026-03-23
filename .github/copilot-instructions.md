@@ -49,3 +49,16 @@ Before creating or modifying any class, always read the corresponding skill file
 | Create / modify Controller | `.github/skills/create-controller.md` |
 | Create / modify Service | `.github/skills/create-service.md` |
 | Create / modify Repository | `.github/skills/create-repository.md` |
+
+
+### Rules for generating issue.md:
+1. **Use Bahasa Indonesia** — write in Indonesian, as if explaining to a junior developer or a basic AI model.
+2. **Use structured bullet points or numbered lists** — avoid long paragraphs.
+3. **Keep it concise** — include only what is necessary to understand and implement the task. Do not over-explain.
+4. **Include a logical problem-solving flow** — describe the steps to solve the problem in order, not the full code.
+5. **For each problem found, always include a solution** — do not just describe the problem without a fix.
+6. **Do NOT write full code** inside issue.md — describe what needs to be done, not how to write every line.
+
+### After generating issue.md:
+- Ask the user: *"Does this issue.md match your requirements? Is there anything missing or unclear?"*
+- If the user confirms it is correct, prompt them to push the `issue.md` file to the repository.

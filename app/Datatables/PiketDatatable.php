@@ -103,6 +103,33 @@ class PiketDatatable
 				$end = $row->end ? date('H:i', strtotime($row->end)) : '-';
 				return $start . ' - ' . $end;
 			})
+			->addColumn('durasi', function ($row) {
+				if (!$row->start || !$row->end) {
+					return '-';
+				}
+
+				$durasiDetik = strtotime($row->end) - strtotime($row->start);
+
+				if ($durasiDetik <= 0) {
+					return '-';
+				}
+
+				$hours = floor($durasiDetik / 3600);
+				$minutes = floor(($durasiDetik % 3600) / 60);
+
+				return $hours . ' jam ' . $minutes . ' menit';
+			})
+			->addColumn('counted_hours', function ($row) {
+				if (!$row->counted_hours) {
+					return '-';
+				}
+
+				$totalMinutes = (int) round($row->counted_hours * 60);
+				$hours = intdiv($totalMinutes, 60);
+				$minutes = $totalMinutes % 60;
+
+				return $hours . ' jam ' . $minutes . ' menit';
+			})
 			->addColumn('status_badge', function ($row) {
 				$badges = [
 					'waiting_approval' => '<span class="badge badge-secondary">Waiting Approval</span>',
