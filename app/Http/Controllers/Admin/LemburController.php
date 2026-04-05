@@ -40,7 +40,7 @@ class LemburController extends Controller
      */
     public function show($id)
     {
-        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation'])
+        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy'])
             ->findOrFail($id);
 
         // Check if user has access to this lembur data
@@ -119,6 +119,12 @@ class LemburController extends Controller
                 'durasi'            => $durasi,
                 'overtime_pay'      => $lembur->overtime_pay ? 'Rp ' . number_format($lembur->overtime_pay, 0, ',', '.') : '-',
                 'status'            => ucfirst($lembur->status),
+                'status_at'         => in_array($lembur->status, ['approved', 'rejected']) && $lembur->status_at
+                    ? date('d/m/Y H:i', strtotime($lembur->status_at))
+                    : null,
+                'status_by_name'    => in_array($lembur->status, ['approved', 'rejected']) && $lembur->statusBy
+                    ? $lembur->statusBy->name
+                    : null,
                 'alasan'            => $lembur->alasan ?? '-',
                 'start_photo'       => $startPhotoUrl,
                 'end_photo'         => $endPhotoUrl,
@@ -189,7 +195,7 @@ class LemburController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint);
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
             
             if (!$response->successful()) {
                 return response()->json([
@@ -266,7 +272,7 @@ class LemburController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint);
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
 
             if (!$response->successful()) {
                 return response()->json([

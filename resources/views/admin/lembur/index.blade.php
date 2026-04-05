@@ -269,6 +269,26 @@
                         $('#detail-status').html('<span class="badge badge-' + 
                             (data.status === 'Approved' ? 'success' : (data.status === 'Rejected' ? 'danger' : 'warning')) + 
                             '">' + data.status + '</span>');
+
+                        // Show approved/rejected at & by
+                        var statusLower = (data.status || '').toLowerCase();
+                        if (statusLower === 'approved' || statusLower === 'rejected') {
+                            var statusLabel = statusLower === 'approved' ? 'Approved' : 'Rejected';
+                            $('#label-status-at').text(statusLabel + ' At');
+                            $('#label-status-by').text(statusLabel + ' By');
+                            $('#label-status-from').text('Status From');
+                            $('#detail-status-at').text(data.status_at || '-');
+                            $('#detail-status-by').text(data.status_by_name || '-');
+                            $('#detail-status-from').text(data.status_from || '-');
+                            $('#row-status-at').show();
+                            $('#row-status-by').show();
+                            $('#row-status-from').show();
+                            $('#btn-approve-modal, #btn-reject-modal').hide();
+                        } else {
+                            $('#row-status-at').hide();
+                            $('#row-status-by').hide();
+                            $('#btn-approve-modal, #btn-reject-modal').show();
+                        }
                         $('#detail-alasan').text(data.alasan || '-');
                         
                         // Live lembur statistics

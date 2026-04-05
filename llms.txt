@@ -1,0 +1,287 @@
+# clientkpudev — Laravel Payroll Client Portal
+
+## Overview
+
+Portal web untuk manajemen dan persetujuan data **Lembur** dan **Piket** karyawan, diakses oleh user berperan `client`. Data disimpan lokal di SQL Server dan approval diteruskan ke **Payroll API** eksternal menggunakan autentikasi berenkripsi AES-256-CBC.
+
+---
+
+## Stack
+
+- PHP 8.2, Laravel 11
+- Database: SQL Server (via `DB_CONNECTION=sqlsrv`)
+- Auth: Session-based (token JWT disimpan di session, diperoleh dari Payroll API)
+- RBAC: Laravel Entrust (roles & permissions)
+- DataTables: Yajra DataTables (server-side)
+- HTTP Client: Guzzle (panggilan ke Payroll API eksternal)
+
+---
+
+## Folder Structure
+
+```
+app/
+  Http/
+    Controllers/
+      Auth/         → Login & logout
+      Admin/        → Dashboard, Lembur, Piket, Profile, GantiPassword
+    Middleware/
+      ClientAuth              → Guard semua route /admin/*
+      RedirectIfAuthenticated → Guard route /login (sudah login → redirect dashboard)
+  Services/
+    PayrollApiService         → Panggilan ke Payroll API eksternal
+    SubscriptionCipherService → Buat encrypted headers untuk Payroll API
+    ProfileService            → Logika ambil data profile user
+    GantiPasswordService      → Validasi & ubah password
+  Repositories/
+    UserRepository            → Update password user
+    ProfileRepository         → Query user + relasi client & area
+  Datatables/
+    LemburDatatable           → Server-side datatable untuk data lembur
+    PiketDatatable            → Server-side datatable untuk data piket
+  Traits/
+    LaravelEntrustUserTrait       → hasRole(), hasPermission(), cachedRoles()
+    LaravelEntrustRoleTrait       → cachedPermissions()
+    LaravelEntrustPermissionTrait → roles() BelongsToMany
+  Models/
+    User              → Tabel `users`, relasi ke Client & Area, uses Entrust
+    Karyawan          → Tabel `users` (konteks karyawan), relasi ke Project dll
+    LemburKaryawan    → Tabel `lembur_karyawan_project`
+    LemburLocation    → Lokasi check-in/out lembur
+    Client            → Tabel `client`
+    Project           → Tabel `project`
+    Role / Permission → Tabel entrust RBAC
+```
+
+---
+
+## Route Map
+
+```
+GET  /                              → redirect → /login
+
+GET  /login                         → LoginController@showLoginForm   [guest]
+POST /login                         → LoginController@login           [guest]
+POST /logout                        → LoginController@logout
+
+[middleware: client.auth]
+GET  /admin/dashboard               → DashboardController@index
+GET  /admin/lembur                  → LemburController@index
+GET  /admin/lembur/{id}             → LemburController@show
+POST /admin/lembur/{id}/approve     → LemburController@approve
+POST /admin/lembur/{id}/reject      → LemburController@reject
+GET  /admin/piket                   → PiketController@index
+GET  /admin/piket/{id}              → PiketController@show
+POST /admin/piket/{id}/approve      → PiketController@approve
+POST /admin/piket/{id}/reject       → PiketController@reject
+GET  /admin/profile                 → ProfileController@index
+GET  /admin/ganti-password          → GantiPasswordController@index
+POST /admin/ganti-password          → GantiPasswordController@update
+```
+
+---
+
+## Authentication Flow
+
+```
+1. User buka /login → form email & password
+2. POST /login → LoginController@login
+     ├── Auth::attempt() → cek ke tabel `users` (password hash)
+     ├── hasRole('client') → cek via LaravelEntrustUserTrait
+     ├── Simpan session: auth_token, user
+     └── Redirect → /admin/dashboard
+
+3. Setiap request ke /admin/*
+     └── Middleware ClientAuth
+           ├── Cek session: auth_token + user ada?
+           ├── Tidak ada → redirect /login
+           └── Ada → lanjut ke controller
+               (validasi token ke Payroll API di-comment karena performa)
+
+4. POST /logout → hapus session → redirect /login
+```
+
+---
+
+## Dashboard Flow
+
+```
+DashboardController@index
+  └── Hitung LemburKaryawan (tabel lembur_karyawan_project)
+        ├── Filter: id_client = client_id user yang login
+        ├── Filter: type = 'lembur'
+        └── Group by status → array lemburCounts
+              (waiting_approval, approved, rejected, dll)
+  └── Return view admin.dashboard
+```
+
+---
+
+## Lembur & Piket Flow
+
+### List (Index)
+
+```
+Request AJAX → LemburController@index / PiketController@index
+  └── LemburDatatable::render() / PiketDatatable::render()
+        ├── Scope: user areas → project.master_area_id
+        ├── Scope: id_client user login
+        ├── Filter: nama_karyawan, status, rentang tanggal
+        └── Return JSON DataTables (kolom: karyawan, durasi, status, action)
+```
+
+### Detail (Show)
+
+```
+GET /admin/lembur/{id} → LemburController@show
+  └── Load LemburKaryawan + relasi:
+        ├── user (Karyawan)
+        ├── client (Client)
+        ├── checkInLocation (LemburLocation type=in)
+        └── checkOutLocation (LemburLocation type=out)
+  └── Generate URL foto dari disk custom_public
+  └── Hitung durasi, counted_hours (bulanan & mingguan)
+  └── Return JSON response
+```
+
+### Approve / Reject
+
+```
+POST /admin/lembur/{id}/approve → LemburController@approve
+  ├── Validasi: record milik client user login
+  ├── Validasi: status == 'waiting_approval'
+  ├── SubscriptionCipherService::buildHeaders()
+  │     ├── X-Subscription-Key       → dari config/env
+  │     ├── X-Subscription-Timestamp → Unix timestamp saat ini
+  │     ├── X-Subscription-Nonce     → random string
+  │     ├── X-Subscription-Encrypted → AES-256-CBC encrypt(key+timestamp+nonce)
+  │     └── X-Subscription-Signature → HMAC-SHA256 dari payload
+  ├── HTTP POST ke Payroll API: {PAYROLL_URL}/api/data-lembur/approve/{id}
+  │     (dengan headers terenkripsi di atas)
+  ├── Jika berhasil → update lokal: status = 'approved'
+  └── Return JSON response
+
+Alur reject sama, endpoint: /api/data-lembur/reject/{id}, status = 'rejected'
+Piket menggunakan endpoint: /api/data-piket/approve|reject/{id}
+```
+
+---
+
+## Profile Flow
+
+```
+GET /admin/profile → ProfileController@index
+  └── ProfileService::getProfile(Auth::id())
+        └── ProfileRepository::getProfile(userId)
+              └── User::select([...])
+                    ->with(['client:id,nama', 'areas:id,nama'])
+                    ->findOrFail(userId)
+  └── Map ke array: nama, email, phone, perusahaan, lokasi, jabatan, deskripsi
+  └── Return view admin.profile.index
+```
+
+---
+
+## Ganti Password Flow
+
+```
+POST /admin/ganti-password → GantiPasswordController@update
+  ├── Validasi: current_password, password (min:8), password_confirmation
+  └── GantiPasswordService::changePassword(userId, currentPassword, hash, newPassword)
+        ├── Hash::check(currentPassword, hash) → validasi password lama
+        └── UserRepository::updatePassword(userId, Hash::make(newPassword))
+  └── Redirect dengan pesan sukses / error
+```
+
+---
+
+## SubscriptionCipherService — Enkripsi ke Payroll API
+
+```
+buildHeaders(subscriptionKey, method, endpoint): array
+  ├── timestamp = Unix timestamp sekarang
+  ├── nonce     = random hex string
+  ├── payload   = JSON{key, timestamp, nonce, method, endpoint}
+  ├── encrypted = encrypt(payload, subscriptionKey)
+  │     └── AES-256-CBC, random IV, return base64(iv + ciphertext)
+  └── signature = HMAC-SHA256(encrypted, subscriptionKey)
+
+Headers yang dihasilkan:
+  X-Subscription-Key
+  X-Subscription-Timestamp
+  X-Subscription-Nonce
+  X-Subscription-Encrypted
+  X-Subscription-Signature
+```
+
+---
+
+## Middleware
+
+| Alias         | Class                      | Fungsi                                                  |
+|---------------|----------------------------|---------------------------------------------------------|
+| `client.auth` | `ClientAuth`               | Guard `/admin/*`: cek session auth_token + user         |
+| `guest`       | `RedirectIfAuthenticated`  | Guard `/login`: jika sudah login → redirect dashboard   |
+| `role`        | `LaravelEntrustRole`       | Cek role user via Entrust                               |
+| `permission`  | `LaravelEntrustPermission` | Cek permission user via Entrust                         |
+
+---
+
+## Key Models & Relasi
+
+```
+User
+  └── belongsTo Client
+  └── belongsToMany MasterArea (via user_area)
+  └── belongsToMany Role (via role_user)  ← Entrust
+
+LemburKaryawan (lembur_karyawan_project)
+  └── belongsTo Karyawan (user_id)
+  └── belongsTo Client (id_client)
+  └── hasMany LemburLocation
+  └── hasOne checkInLocation  (type = 'in')
+  └── hasOne checkOutLocation (type = 'out')
+
+Client
+  └── hasMany User
+  └── hasMany Spk
+
+Project
+  └── belongsTo Spk
+  └── hasMany Karyawan
+  └── hasOne MasterLembur
+```
+
+---
+
+## Environment Variables Penting
+
+```
+DB_CONNECTION=sqlsrv
+DB_HOST=
+DB_PORT=1433
+DB_DATABASE=
+DB_USERNAME=
+DB_PASSWORD=
+
+PAYROLL_URL=          # Base URL Payroll API eksternal
+SUBSCRIPTION_KEY=     # Kunci enkripsi untuk SubscriptionCipherService
+```
+
+---
+
+## External API (Payroll API)
+
+Endpoint yang dipanggil dari aplikasi ini:
+
+| Method | Endpoint                        | Dipanggil dari             |
+|--------|---------------------------------|----------------------------|
+| POST   | /auth/login                     | PayrollApiService (unused) |
+| POST   | /auth/logout                    | PayrollApiService (unused) |
+| GET    | /auth/me                        | PayrollApiService (unused) |
+| POST   | /api/data-lembur/approve/{id}   | LemburController@approve   |
+| POST   | /api/data-lembur/reject/{id}    | LemburController@reject    |
+| POST   | /api/data-piket/approve/{id}    | PiketController@approve    |
+| POST   | /api/data-piket/reject/{id}     | PiketController@reject     |
+
+Semua panggilan API menggunakan encrypted headers dari `SubscriptionCipherService`.

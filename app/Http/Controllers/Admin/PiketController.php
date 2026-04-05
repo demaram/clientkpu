@@ -38,7 +38,7 @@ class PiketController extends Controller
      */
     public function show($id)
     {
-        $piket = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation'])
+        $piket = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy'])
             ->findOrFail($id);
 
         // Check if user has access to this Piket data
@@ -97,6 +97,12 @@ class PiketController extends Controller
                 'durasi'            => $durasi,
                 'overtime_pay'      => $piket->overtime_pay ? 'Rp ' . number_format($piket->overtime_pay, 0, ',', '.') : '-',
                 'status'            => ucfirst($piket->status),
+                'status_at'         => in_array($piket->status, ['approved', 'rejected']) && $piket->status_at
+                    ? date('d/m/Y H:i', strtotime($piket->status_at))
+                    : null,
+                'status_by_name'    => in_array($piket->status, ['approved', 'rejected']) && $piket->statusBy
+                    ? $piket->statusBy->name
+                    : null,
                 'alasan'            => $piket->alasan ?? '-',
                 'start_photo'       => $startPhotoUrl,
                 'end_photo'         => $endPhotoUrl,
@@ -161,7 +167,7 @@ class PiketController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint);
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id()]);
 
             if (!$response->successful()) {
                 return response()->json([
@@ -238,7 +244,7 @@ class PiketController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint);
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id()]);
 
             if (!$response->successful()) {
                 return response()->json([

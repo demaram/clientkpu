@@ -68,6 +68,18 @@
                                         <th>Status</th>
                                         <td id="detail-status">-</td>
                                     </tr>
+                                    <tr id="row-status-at" style="display:none;">
+                                        <th id="label-status-at">-</th>
+                                        <td id="detail-status-at">-</td>
+                                    </tr>
+                                    <tr id="row-status-by" style="display:none;">
+                                        <th id="label-status-by">-</th>
+                                        <td id="detail-status-by">-</td>
+                                    </tr>
+                                    <tr id="row-status-from" style="display:none;">
+                                        <th id="label-status-from">-</th>
+                                        <td id="detail-status-from">-</td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
@@ -141,10 +153,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-success" onclick="approveFromModal()">
+                <button type="button" id="btn-approve-modal" class="btn btn-success" onclick="approveFromModal()">
                     <i class="fas fa-check"></i> Approve
                 </button>
-                <button type="button" class="btn btn-danger" onclick="rejectFromModal()">
+                <button type="button" id="btn-reject-modal" class="btn btn-danger" onclick="rejectFromModal()">
                     <i class="fas fa-times-circle"></i> Reject
                 </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">

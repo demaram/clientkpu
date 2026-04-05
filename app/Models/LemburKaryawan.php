@@ -25,7 +25,9 @@ class LemburKaryawan extends Model
         'status',
         'overtime_pay',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'status_at',
+        'status_by'
     ];
 
     public function history()
@@ -36,6 +38,11 @@ class LemburKaryawan extends Model
     public function user()
     {
           return $this->belongsTo('App\Models\Karyawan','user_id');
+    }
+
+    public function statusBy()
+    {
+          return $this->belongsTo('App\Models\User','status_by');
     }
 
     public function client()
