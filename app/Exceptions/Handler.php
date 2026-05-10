@@ -27,7 +27,6 @@ class Handler extends ExceptionHandler
             
         });
         $this->renderable(function (Throwable $e) {
-            dd($e);
             if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
                 return response()->json([
                     'message' => 'Page not found',
@@ -37,7 +36,6 @@ class Handler extends ExceptionHandler
             if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
                 return redirect()->route('login::page::');
             }
-            // dd($e);
         });
     }
 }
