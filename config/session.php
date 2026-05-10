@@ -60,7 +60,7 @@ return [
     |
     */
 
-    'files' => storage_path('framework/sessions'),
+    'files' => '/var/www/html/kpusahatama/'.config('app.env').'/storage/framework/sessions',
 
     /*
     |--------------------------------------------------------------------------

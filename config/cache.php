@@ -49,8 +49,8 @@ return [
 
         'file' => [
             'driver' => 'file',
-            'path' => storage_path('framework/cache/data'),
-            'lock_path' => storage_path('framework/cache/data'),
+            'path' => '/var/www/html/kpusahatama/'.config('app.env').'/storage/framework/cache/data',
+            'lock_path' => '/var/www/html/kpusahatama/'.config('app.env').'/storage/framework/cache/data',
         ],
 
         'memcached' => [
