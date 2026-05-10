@@ -263,7 +263,7 @@
                             var statusLabel = statusLower === 'approved' ? 'Approved' : 'Rejected';
                             $('#label-status-at').text(statusLabel + ' At');
                             $('#label-status-by').text(statusLabel + ' By');
-                            $('#label-status-from').text('Status From');
+                            $('#label-status-from').text(statusLabel + ' From');
                             $('#detail-status-at').text(data.status_at || '-');
                             $('#detail-status-by').text(data.status_by_name || '-');
                             $('#detail-status-from').text(data.status_from || '-');

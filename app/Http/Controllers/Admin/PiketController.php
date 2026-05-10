@@ -167,8 +167,8 @@ class PiketController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id()]);
-
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
+            
             if (!$response->successful()) {
                 return response()->json([
                     'success' => false,
@@ -185,6 +185,7 @@ class PiketController extends Controller
                 'data' => $response->json('data')
             ]);
         } catch (\Throwable $e) {
+            dd($e);
             Log::error('Approve piket payroll API gagal', [
                 'id' => $id,
                 'error' => $e->getMessage(),
@@ -244,7 +245,7 @@ class PiketController extends Controller
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id()]);
+                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
 
             if (!$response->successful()) {
                 return response()->json([

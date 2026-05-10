@@ -125,6 +125,9 @@ class LemburController extends Controller
                 'status_by_name'    => in_array($lembur->status, ['approved', 'rejected']) && $lembur->statusBy
                     ? $lembur->statusBy->name
                     : null,
+                'status_from'      => in_array($lembur->status, ['approved', 'rejected']) && $lembur->status_from
+                    ? ucfirst($lembur->status_from)
+                    : null,
                 'alasan'            => $lembur->alasan ?? '-',
                 'start_photo'       => $startPhotoUrl,
                 'end_photo'         => $endPhotoUrl,

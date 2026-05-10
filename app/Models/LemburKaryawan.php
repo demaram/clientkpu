@@ -27,7 +27,8 @@ class LemburKaryawan extends Model
         'created_at',
         'updated_at',
         'status_at',
-        'status_by'
+        'status_by',
+        'status_from',
     ];
 
     public function history()
