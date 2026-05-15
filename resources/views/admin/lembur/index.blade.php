@@ -85,14 +85,7 @@
                             <th>Overtime Pay</th>
                             <th width="15%">Action</th>
                         </tr>
-                    </thead>
-                    <tfoot>
-                        <tr>
-                            <th colspan="6" class="text-right">Total Durasi (data terfilter):</th>
-                            <th id="totalDurasiCell">0 jam 0 menit</th>
-                            <th colspan="4"></th>
-                        </tr>
-                    </tfoot>
+                    </thead>    
                     <tbody>
                     </tbody>
                 </table>
