@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LemburController;
+use App\Http\Controllers\Admin\LemburRekapController;
 use App\Http\Controllers\Admin\PiketController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -38,6 +39,14 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/{id}', [PiketController::class, 'show'])->name('admin.piket.show');
         Route::post('/{id}/approve', [PiketController::class, 'approve'])->name('admin.piket.approve');
         Route::post('/{id}/reject', [PiketController::class, 'reject'])->name('admin.piket.reject');
+    });
+
+    // Rekap Lembur
+    Route::prefix('rekap-lembur')->name('admin.rekap-lembur.')->group(function () {
+        Route::get('/',       [LemburRekapController::class, 'index'])->name('index');
+        Route::get('/form',   [LemburRekapController::class, 'form'])->name('form');
+        Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
+        Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
     });
 
     // Profile

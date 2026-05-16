@@ -263,6 +263,14 @@
                             (data.status === 'Approved' ? 'success' : (data.status === 'Rejected' ? 'danger' : 'warning')) + 
                             '">' + data.status + '</span>');
 
+                        // Show step progress for multi-step
+                        if (data.step_progress) {
+                            $('#detail-step-progress').text('Step ' + data.step_progress);
+                            $('#row-step-progress').show();
+                        } else {
+                            $('#row-step-progress').hide();
+                        }
+
                         // Show approved/rejected at & by
                         var statusLower = (data.status || '').toLowerCase();
                         if (statusLower === 'approved' || statusLower === 'rejected') {

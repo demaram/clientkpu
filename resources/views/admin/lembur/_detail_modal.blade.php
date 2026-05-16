@@ -79,6 +79,11 @@
                                     <tr id="row-status-from" style="display:none;">
                                         <th id="label-status-from">-</th>
                                         <td id="detail-status-from">-</td>
+                                    </tr>
+                                    <tr id="row-step-progress" style="display:none;">
+                                        <th>Progres Step</th>
+                                        <td id="detail-step-progress">-</td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>

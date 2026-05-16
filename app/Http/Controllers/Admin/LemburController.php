@@ -103,6 +103,13 @@ class LemburController extends Controller
             return $h . ' jam ' . $m . ' menit';
         };
 
+        // Step progress info
+        $stepProgress = null;
+        if ($lembur->approval_config_id) {
+            $totalStepsCount = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)->count();
+            $stepProgress = $lembur->current_approval_step . '/' . $totalStepsCount;
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -145,6 +152,7 @@ class LemburController extends Controller
                 'weekly_counted_hours'  => $formatHours($weeklyCountedHours),
                 'monthly_period'        => $lemburDate->translatedFormat('F Y'),
                 'weekly_period'         => 'Minggu ke-' . $lemburDate->weekOfYear . ' ' . $lemburDate->year,
+                'step_progress'         => $stepProgress,
             ]
         ]);
     }
@@ -170,6 +178,20 @@ class LemburController extends Controller
                 'success' => false,
                 'message' => 'Lembur sudah diproses sebelumnya'
             ]);
+        }
+
+        // Step-aware validation: check if it's this user's turn
+        if ($lembur->approval_config_id) {
+            $step = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+                ->where('step_order', $lembur->current_approval_step)
+                ->first();
+
+            if ($step && $step->approver_user_id != Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bukan giliran Anda untuk approve lembur ini'
+                ], 403);
+            }
         }
 
         $payrollBaseUrl = rtrim(config('services.payroll.api_url'));
@@ -249,6 +271,20 @@ class LemburController extends Controller
                 'success' => false,
                 'message' => 'Lembur sudah diproses sebelumnya'
             ]);
+        }
+
+        // Step-aware validation
+        if ($lembur->approval_config_id) {
+            $step = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+                ->where('step_order', $lembur->current_approval_step)
+                ->first();
+
+            if ($step && $step->approver_user_id != Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bukan giliran Anda untuk reject lembur ini'
+                ], 403);
+            }
         }
 
         $payrollBaseUrl = config('services.payroll.api_url');

@@ -55,7 +55,7 @@ class LemburDatatable
 		}
 
 		$query = LemburKaryawan::query()
-			->with(['user', 'client'])
+			->with(['user', 'client', 'approvalConfig.steps'])
 			->when($clientId, function ($query) use ($clientId) {
 				return $query->where('client_id', $clientId);
 			})
@@ -137,6 +137,11 @@ class LemburDatatable
 				return $hours . ' jam ' . $minutes . ' menit';
 			})
 			->addColumn('status_badge', function ($row) {
+				if ($row->status === 'waiting_approval' && $row->approval_config_id && $row->approvalConfig) {
+					$totalSteps = $row->approvalConfig->steps->count();
+					return '<span class="badge badge-secondary">Waiting Approval (' . $row->current_approval_step . '/' . $totalSteps . ')</span>';
+				}
+
 				$badges = [
 					'waiting_approval' => '<span class="badge badge-secondary">Waiting Approval</span>',
 					'pending' => '<span class="badge badge-warning">On Process</span>',
