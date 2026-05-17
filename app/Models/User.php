@@ -7,9 +7,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Traits\LaravelEntrustUserTrait;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
+
+    /** Per-request role cache — avoids repeated DB queries when file cache driver can't use tags. */
+    private ?Collection $rolesCache = null;
+
+    protected function cachedRoles(): Collection
+    {
+        if ($this->rolesCache === null) {
+            $this->rolesCache = $this->roles()->get();
+        }
+        return $this->rolesCache;
+    }
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
     use LaravelEntrustUserTrait;
