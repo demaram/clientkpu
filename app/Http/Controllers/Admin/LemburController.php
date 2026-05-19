@@ -229,13 +229,12 @@ class LemburController extends Controller
                 ], $response->status());
             }
 
-            $lembur->status = 'approved';
-            $lembur->save();
-
             return response()->json([
                 'success' => true,
                 'message' => $response->json('message') ?? 'Lembur berhasil di-approve',
-                'data' => $response->json('data')
+                'status'       => $response->json('status'),
+                'current_step' => $response->json('current_step'),
+                'total_steps'  => $response->json('total_steps'),
             ]);
         } catch (\Throwable $e) {
             Log::error('Approve lembur payroll API gagal', [
@@ -320,13 +319,10 @@ class LemburController extends Controller
                 ], $response->status());
             }
 
-            $lembur->status = 'rejected';
-            $lembur->save();
-
             return response()->json([
                 'success' => true,
                 'message' => $response->json('message') ?? 'Lembur berhasil di-reject',
-                'data' => $response->json('data')
+                'status' => $response->json('status'),
             ]);
         } catch (\Throwable $e) {
             Log::error('Reject lembur payroll API gagal', [

@@ -159,12 +159,24 @@ class LemburDatatable
 				</button>';
 
 				if ($row->status === 'waiting_approval') {
-					$buttons .= '<button type="button" class="btn btn-sm btn-success" onclick="approveLembur(' . $row->id . ')" title="Approve">
-						<i class="fas fa-check"></i>
-					</button>';
-					$buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
-						<i class="fas fa-times"></i>
-					</button>';
+					$canAct = true;
+
+					// For multi-step approval, only show buttons when it's this user's turn
+					if ($row->approval_config_id && $row->approvalConfig) {
+						$currentStep = $row->approvalConfig->steps
+							->where('step_order', $row->current_approval_step)
+							->first();
+						$canAct = $currentStep && $currentStep->approver_user_id == Auth::id();
+					}
+
+					if ($canAct) {
+						$buttons .= '<button type="button" class="btn btn-sm btn-success" onclick="approveLembur(' . $row->id . ')" title="Approve">
+							<i class="fas fa-check"></i>
+						</button>';
+						$buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
+							<i class="fas fa-times"></i>
+						</button>';
+					}
 				}
 
 				$buttons .= '</div>';

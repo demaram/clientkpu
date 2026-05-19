@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\LemburApprovalConfig;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
 class ClientMenuService
 {
@@ -62,12 +63,15 @@ class ClientMenuService
 
     private function isRecapUser(): bool
     {
-        static $result = null;
+        // Prefer Laravel auth; fall back to the session key that ClientAuth middleware validates.
+        // Auth::id() may be null when the web guard hasn't been resolved yet, because
+        // these routes only run client.auth (not Laravel's auth middleware).
+        $userId = Auth::id() ?? data_get(Session::get('user'), 'id');
 
-        if ($result === null) {
-            $result = LemburApprovalConfig::where('recap_user_id', Auth::id())->exists();
+        if (!$userId) {
+            return false;
         }
 
-        return $result;
+        return LemburApprovalConfig::where('recap_user_id', $userId)->exists();
     }
 }
