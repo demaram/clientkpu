@@ -338,8 +338,12 @@ return [
             'url' => 'admin/sppd',
             'icon' => 'fas fa-fw fa-plane',
         ],
-        
-
+        [
+            'text' => 'Rekap Lembur',
+            'url'  => 'admin/rekap-lembur',
+            'icon' => 'fas fa-fw fa-file-invoice',
+            'key'  => 'rekap-lembur',
+        ],
     ],
 
     /*
@@ -362,6 +366,7 @@ return [
         JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter::class,
+        App\AdminLte\Filters\RecapLemburFilter::class,
     ],
 
     /*

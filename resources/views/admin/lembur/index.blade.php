@@ -117,7 +117,12 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script>
+        const showOvertimePay = {{ $showOvertimePay ? 'true' : 'false' }};
+
         $(document).ready(function() {
+            if (!showOvertimePay) {
+                $('#row-overtime-pay').hide();
+            }
             $('#filterDateRange').daterangepicker({
                 autoUpdateInput: false,
                 timePicker: true,
@@ -198,7 +203,7 @@
                     {data: 'counted_hours', name: 'counted_hours',},
                     {data: 'alasan', name: 'alasan'},
                     {data: 'status_badge', name: 'status'},
-                    {data: 'overtime_pay', name: 'overtime_pay'},
+                    {data: 'overtime_pay', name: 'overtime_pay', visible: showOvertimePay},
                     {data: 'action', name: 'action', orderable: false, searchable: false}
                 ],
                 drawCallback: function() {
@@ -288,7 +293,12 @@
                         } else {
                             $('#row-status-at').hide();
                             $('#row-status-by').hide();
-                            $('#btn-approve-modal, #btn-reject-modal').show();
+                            $('#row-status-from').hide();
+                            if (data.can_act) {
+                                $('#btn-approve-modal, #btn-reject-modal').show();
+                            } else {
+                                $('#btn-approve-modal, #btn-reject-modal').hide();
+                            }
                         }
                         $('#detail-alasan').text(data.alasan || '-');
                         

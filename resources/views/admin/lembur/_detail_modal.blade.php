@@ -60,7 +60,7 @@
                                         <th>Durasi</th>
                                         <td id="detail-durasi">-</td>
                                     </tr>
-                                    <tr>
+                                    <tr id="row-overtime-pay">
                                         <th>Overtime Pay</th>
                                         <td id="detail-overtime-pay" class="font-weight-bold text-success">-</td>
                                     </tr>

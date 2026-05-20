@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Datatables\LemburDatatable;
 use App\Http\Controllers\Controller;
+use App\Models\LemburApprovalConfig;
+use App\Models\LemburApprovalConfigStep;
 use App\Models\LemburKaryawan;
 use App\Models\User;
 use Carbon\Carbon;
@@ -11,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use App\Services\SubscriptionCipherService;
 
@@ -32,7 +35,12 @@ class LemburController extends Controller
             return $lemburDatatable->render($request);
         }
 
-        return view('admin.lembur.index');
+        $userId = Auth::id() ?? data_get(Session::get('user'), 'id');
+        $showOvertimePay = $userId
+            ? LemburApprovalConfig::where('recap_user_id', $userId)->exists()
+            : false;
+
+        return view('admin.lembur.index', compact('showOvertimePay'));
     }
 
     /**
@@ -106,8 +114,21 @@ class LemburController extends Controller
         // Step progress info
         $stepProgress = null;
         if ($lembur->approval_config_id) {
-            $totalStepsCount = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)->count();
+            $totalStepsCount = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)->count();
             $stepProgress = $lembur->current_approval_step . '/' . $totalStepsCount;
+        }
+
+        // Determine if current user can act on this lembur
+        $canAct = false;
+        if ($lembur->status === 'waiting_approval') {
+            if ($lembur->approval_config_id) {
+                $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+                    ->where('step_order', $lembur->current_approval_step)
+                    ->first();
+                $canAct = $step && $step->approver_user_id == Auth::id();
+            } else {
+                $canAct = true;
+            }
         }
 
         return response()->json([
@@ -153,6 +174,7 @@ class LemburController extends Controller
                 'monthly_period'        => $lemburDate->translatedFormat('F Y'),
                 'weekly_period'         => 'Minggu ke-' . $lemburDate->weekOfYear . ' ' . $lemburDate->year,
                 'step_progress'         => $stepProgress,
+                'can_act'               => $canAct,
             ]
         ]);
     }
