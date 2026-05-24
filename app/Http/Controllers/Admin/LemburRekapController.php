@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Auth;
 
 class LemburRekapController extends Controller
 {
+    /**
+     * Abort with 403 if the logged-in user is not a recap_user_id on any config.
+     * Returns the matching config so callers can read client_id without a second query.
+     *
+     * @return LemburApprovalConfig
+     */
     private function ensureRecapAccess(): LemburApprovalConfig
     {
         $config = LemburApprovalConfig::where('recap_user_id', Auth::id())->first();
@@ -24,6 +30,14 @@ class LemburRekapController extends Controller
         return $config;
     }
 
+    /**
+     * Show the historical rekap list for this client.
+     *
+     * Passes $approvedMonths (Y-m strings) to the view so the Add Rekap modal
+     * can warn the user client-side when a month already has an approved rekap.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $config   = $this->ensureRecapAccess();
@@ -33,16 +47,24 @@ class LemburRekapController extends Controller
             ->orderByDesc('period_start')
             ->get();
 
-        $thisMonth        = Carbon::now()->startOfMonth()->toDateString();
-        $hasApprovedThisMonth = LemburRekap::where('client_id', $clientId)
-            ->where('period_start', $thisMonth)
+        // Pass list of Y-m strings for months that already have an approved rekap,
+        // so the JS month-picker modal can warn before redirecting.
+        $approvedMonths = $rekaps
             ->where('status', 'approved')
-            ->exists();
+            ->map(fn ($r) => Carbon::parse($r->period_start)->format('Y-m'))
+            ->values()
+            ->toArray();
 
-        return view('admin.rekap-lembur.index', compact('rekaps', 'hasApprovedThisMonth', 'config'))
+        return view('admin.rekap-lembur.index', compact('rekaps', 'approvedMonths', 'config'))
             ->with('clientId', $clientId);
     }
 
+    /**
+     * Show the rekap form for a chosen month: month picker + approved lembur table.
+     *
+     * @param  Request  $request  Expects optional `month` (Y-m format)
+     * @return \Illuminate\View\View
+     */
     public function form(Request $request)
     {
         $config   = $this->ensureRecapAccess();
@@ -79,6 +101,14 @@ class LemburRekapController extends Controller
         ));
     }
 
+    /**
+     * Upsert a lembur_rekap record with status=approved and bulk-insert its items.
+     *
+     * Re-rekap replaces existing items via delete + bulk insert (not individual updates).
+     *
+     * @param  Request  $request  Expects `month` (Y-m format)
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function approve(Request $request)
     {
         $config   = $this->ensureRecapAccess();
@@ -133,6 +163,12 @@ class LemburRekapController extends Controller
             ->with('success', 'Rekap lembur bulan ' . $periodStart->translatedFormat('F Y') . ' berhasil di-approve');
     }
 
+    /**
+     * Upsert a lembur_rekap record with status=rejected and clear its items.
+     *
+     * @param  Request  $request  Expects `month` (Y-m format)
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function reject(Request $request)
     {
         $config   = $this->ensureRecapAccess();

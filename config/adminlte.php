@@ -325,18 +325,21 @@ return [
         ['header' => 'Manajemen'],
         [
             'text' => 'Lembur',
-            'url' => 'admin/lembur',
+            'url'  => 'admin/lembur',
             'icon' => 'fas fa-fw fa-clock',
+            'key'  => 'menu-lembur',
         ],
         [
             'text' => 'Piket',
-            'url' => 'admin/piket',
+            'url'  => 'admin/piket',
             'icon' => 'fas fa-fw fa-calendar-check',
+            'key'  => 'menu-piket',
         ],
         [
             'text' => 'SPPD',
-            'url' => 'admin/sppd',
+            'url'  => 'admin/sppd',
             'icon' => 'fas fa-fw fa-plane',
+            'key'  => 'menu-sppd',
         ],
         [
             'text' => 'Rekap Lembur',
@@ -366,7 +369,7 @@ return [
         JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter::class,
-        App\AdminLte\Filters\RecapLemburFilter::class,
+        App\AdminLte\Filters\ClientRoleMenuFilter::class,
     ],
 
     /*

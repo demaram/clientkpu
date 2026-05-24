@@ -10,7 +10,9 @@ class DashboardController extends Controller
 {
     
     /**
-     * Show the admin dashboard.
+     * Show the admin dashboard with lembur status counts for the logged-in client.
+     *
+     * @return \Illuminate\View\View
      */
     public function index()
     {

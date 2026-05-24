@@ -26,16 +26,14 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Rekap Lembur Bulanan</h3>
-            @if(!$hasApprovedThisMonth)
-                <a href="{{ route('admin.rekap-lembur.form') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus"></i> Rekap Bulan Ini
-                </a>
-            @endif
+            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalAddRekap">
+                <i class="fas fa-plus"></i> Add Rekapitulasi
+            </button>
         </div>
         <div class="card-body">
             @if($rekaps->isEmpty())
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> Belum ada rekap lembur. Klik tombol <strong>Rekap Bulan Ini</strong> untuk memulai.
+                    <i class="fas fa-info-circle"></i> Belum ada rekap lembur. Klik tombol <strong>Add Rekapitulasi</strong> untuk memulai.
                 </div>
             @else
                 <div class="table-responsive">
@@ -81,6 +79,37 @@
             @endif
         </div>
     </div>
+
+    {{-- Modal: Add Rekap --}}
+    <div class="modal fade" id="modalAddRekap" tabindex="-1" role="dialog" aria-labelledby="modalAddRekapLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAddRekapLabel">Pilih Periode Rekap</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="rekap-warning" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Bulan ini sudah memiliki rekap <strong>approved</strong>. Jika dilanjutkan, data rekap lama akan ditimpa.
+                    </div>
+                    <div class="form-group">
+                        <label for="inputMonth">Bulan Rekap</label>
+                        <input type="month" id="inputMonth" class="form-control"
+                               value="{{ \Carbon\Carbon::now()->format('Y-m') }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btnPilihPeriode">
+                        <i class="fas fa-arrow-right"></i> Lanjut
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('css')
@@ -95,6 +124,27 @@
             $('#rekapTable').DataTable({
                 order: [[1, 'desc']],
                 language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json' }
+            });
+
+            var approvedMonths = @json($approvedMonths);
+            var formUrl = '{{ route('admin.rekap-lembur.form') }}';
+
+            $('#inputMonth').on('change', function () {
+                var selected = $(this).val();
+                if (approvedMonths.indexOf(selected) !== -1) {
+                    $('#rekap-warning').removeClass('d-none');
+                } else {
+                    $('#rekap-warning').addClass('d-none');
+                }
+            });
+
+            $('#btnPilihPeriode').on('click', function () {
+                var month = $('#inputMonth').val();
+                if (!month) {
+                    alert('Pilih bulan terlebih dahulu.');
+                    return;
+                }
+                window.location.href = formUrl + '?month=' + month;
             });
         });
     </script>

@@ -8,6 +8,18 @@ class SubscriptionCipherService
 {
     protected string $cipher = 'AES-256-CBC';
 
+    /**
+     * Build the signed HTTP headers required by the Payroll API subscription middleware.
+     *
+     * Header set: X-Subscription-Key, X-Subscription-Timestamp, X-Subscription-Nonce,
+     * X-Subscription-Encrypted (AES-256-CBC of key|METHOD|endpoint|timestamp),
+     * X-Subscription-Signature (HMAC-SHA256).
+     *
+     * @param  string  $subscriptionKey  Raw subscription key from config
+     * @param  string  $method           HTTP method (GET, POST, etc.)
+     * @param  string  $endpoint         Request path (e.g. 'api/data-lembur/approve/1')
+     * @return array
+     */
     public function buildHeaders(string $subscriptionKey, string $method, string $endpoint): array
     {
         $timestamp = (string) now()->timestamp;
@@ -24,6 +36,14 @@ class SubscriptionCipherService
         ];
     }
 
+    /**
+     * Encrypt a plain-text string with AES-256-CBC using a SHA-256-derived key.
+     * Returns base64(IV + ciphertext), or empty string on failure.
+     *
+     * @param  string  $plainText
+     * @param  string  $subscriptionKey
+     * @return string
+     */
     public function encrypt(string $plainText, string $subscriptionKey): string
     {
         $key = hash('sha256', $subscriptionKey, true);
@@ -39,6 +59,14 @@ class SubscriptionCipherService
         return base64_encode($iv . $encrypted);
     }
 
+    /**
+     * Decrypt a base64(IV + ciphertext) payload produced by encrypt().
+     * Returns null if the payload is malformed or decryption fails.
+     *
+     * @param  string  $encryptedPayload
+     * @param  string  $subscriptionKey
+     * @return string|null
+     */
     public function decrypt(string $encryptedPayload, string $subscriptionKey): ?string
     {
         $decoded = base64_decode($encryptedPayload, true);

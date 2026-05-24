@@ -8,6 +8,16 @@ use Illuminate\Support\Facades\Session;
 
 class ClientMenuService
 {
+    /**
+     * Build the full sidebar menu array for the current user.
+     *
+     * Rekap Lembur is appended only when the user is a recap_user_id on any
+     * lembur_approval_configs. The ClientRoleMenuFilter in adminlte.php also
+     * hides Lembur/Piket/SPPD for recap users; this service is kept for
+     * any programmatic menu overrides.
+     *
+     * @return array
+     */
     public function getMenus(): array
     {
         $menus = [
@@ -61,6 +71,14 @@ class ClientMenuService
         return $menus;
     }
 
+    /**
+     * Check whether the current user is a recap_user_id on any approval config.
+     *
+     * Falls back to the session key set by ClientAuth middleware when the
+     * Laravel web guard hasn't resolved the user yet.
+     *
+     * @return bool
+     */
     private function isRecapUser(): bool
     {
         // Prefer Laravel auth; fall back to the session key that ClientAuth middleware validates.

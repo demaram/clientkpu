@@ -16,13 +16,20 @@ class PiketController extends Controller
 {
     protected SubscriptionCipherService $subscriptionCipher;
 
+    /**
+     * @param  SubscriptionCipherService  $subscriptionCipher
+     */
     public function __construct(SubscriptionCipherService $subscriptionCipher)
     {
         $this->subscriptionCipher = $subscriptionCipher;
     }
 
     /**
-     * Display a listing of the resource.
+     * Render the piket listing page or return DataTables JSON for AJAX requests.
+     *
+     * @param  Request        $request
+     * @param  PiketDatatable $datatable
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
      */
     public function index(Request $request, PiketDatatable $datatable)
     {
@@ -34,7 +41,10 @@ class PiketController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Return full piket detail as JSON for the detail modal.
+     *
+     * @param  int  $id  LemburKaryawan primary key (type=piket)
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {

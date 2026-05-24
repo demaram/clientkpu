@@ -21,13 +21,23 @@ class LemburController extends Controller
 {
     protected SubscriptionCipherService $subscriptionCipher;
 
+    /**
+     * @param  SubscriptionCipherService  $subscriptionCipher
+     */
     public function __construct(SubscriptionCipherService $subscriptionCipher)
     {
         $this->subscriptionCipher = $subscriptionCipher;
     }
 
     /**
-     * Display a listing of the resource.
+     * Render the lembur listing page or return DataTables JSON for AJAX requests.
+     *
+     * Passes $showOvertimePay flag so recap users can see financial data while
+     * step-only approvers cannot.
+     *
+     * @param  Request         $request
+     * @param  LemburDatatable $lemburDatatable
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
      */
     public function index(Request $request, LemburDatatable $lemburDatatable)
     {
@@ -44,7 +54,11 @@ class LemburController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Return full lembur detail as JSON for the detail modal, including
+     * can_act flag to control Approve/Reject button visibility.
+     *
+     * @param  int  $id  LemburKaryawan primary key
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {
@@ -180,7 +194,14 @@ class LemburController extends Controller
     }
 
     /**
-     * Approve lembur request
+     * Proxy an approve action to the Payroll API with encrypted subscription headers.
+     *
+     * Validates step ownership before forwarding. Returns the Payroll API's
+     * current_step and total_steps in the response so the client can update
+     * the status label without reloading.
+     *
+     * @param  int  $id  LemburKaryawan primary key
+     * @return \Illuminate\Http\JsonResponse
      */
     public function approve($id)
     {
@@ -272,9 +293,14 @@ class LemburController extends Controller
     }
 
     /**
-     * Reject lembur request
+     * Proxy a reject action to the Payroll API with encrypted subscription headers.
+     *
+     * Validates step ownership before forwarding.
+     *
+     * @param  int  $id  LemburKaryawan primary key
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function reject($id)
+    public function reject(Request $request, $id)
     {
         $lembur = LemburKaryawan::findOrFail($id);
 
@@ -310,7 +336,7 @@ class LemburController extends Controller
 
         $payrollBaseUrl = config('services.payroll.api_url');
         $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
-        
+
         if (!$payrollBaseUrl || !$subscriptionKey) {
             return response()->json([
                 'success' => false,
@@ -320,7 +346,7 @@ class LemburController extends Controller
 
         $endpoint = 'api/data-lembur/reject/' . $id;
         $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
-        
+
         if (empty($headers['X-Subscription-Encrypted'])) {
             return response()->json([
                 'success' => false,
@@ -328,11 +354,17 @@ class LemburController extends Controller
             ], 500);
         }
 
+        $payload = [
+            'status_by'   => Auth::id(),
+            'status_from' => 'client',
+            'notes'       => $request->input('notes'),
+        ];
+
         try {
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
+                ->post($payrollBaseUrl . $endpoint, $payload);
 
             if (!$response->successful()) {
                 return response()->json([
