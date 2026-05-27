@@ -49,6 +49,7 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/form',   [LemburRekapController::class, 'form'])->name('form');
         Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
         Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
+        Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
     });
 
     // Profile

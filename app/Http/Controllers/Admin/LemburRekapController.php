@@ -102,6 +102,33 @@ class LemburRekapController extends Controller
     }
 
     /**
+     * Display the detail page for a single overtime recap, grouped by employee.
+     * Requires recap_user_id access — same gate as form/approve/reject.
+     *
+     * @param  int  $id  LemburRekap primary key
+     * @return \Illuminate\View\View
+     */
+    public function detail(int $id)
+    {
+        $config   = $this->ensureRecapAccess();
+        $clientId = $config->client_id;
+
+        // Scope to this client to prevent cross-client ID enumeration
+        $rekap = LemburRekap::with(['client', 'recapUser'])
+            ->where('client_id', $clientId)
+            ->findOrFail($id);
+
+        $items = LemburRekapItem::with(['lembur.user'])
+            ->where('lembur_rekap_id', $id)
+            ->get()
+            ->sortBy('lembur.start');
+
+        $grouped = $items->groupBy(fn ($item) => $item->lembur?->user_id);
+
+        return view('admin.rekap-lembur.detail', compact('rekap', 'grouped'));
+    }
+
+    /**
      * Upsert a lembur_rekap record with status=approved and bulk-insert its items.
      *
      * Re-rekap replaces existing items via delete + bulk insert (not individual updates).

@@ -65,6 +65,10 @@
                                 </td>
                                 <td>{{ \Carbon\Carbon::parse($r->actioned_at)->format('d/m/Y H:i') }}</td>
                                 <td>
+                                    <a href="{{ route('admin.rekap-lembur.detail', $r->id) }}"
+                                       class="btn btn-info btn-sm">
+                                        <i class="fas fa-list-alt"></i> Detail
+                                    </a>
                                     <a href="{{ route('admin.rekap-lembur.form', ['month' => \Carbon\Carbon::parse($r->period_start)->format('Y-m')]) }}"
                                        class="btn btn-warning btn-sm"
                                        onclick="return confirm('Re-rekap akan menimpa data rekap lama untuk periode ini. Lanjutkan?')">
