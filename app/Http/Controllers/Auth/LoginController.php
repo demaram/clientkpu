@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\LemburApprovalConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -77,12 +78,15 @@ class LoginController extends Controller
             
             // Set session untuk ClientAuth middleware
             Session::put('auth_token', $user->remember_token ?? 'local_auth_' . $user->id);
-            
+
             Session::put('user', [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
             ]);
+
+            // Cache recap-user flag in session so every page avoids a DB hit
+            Session::put('is_recap_user', LemburApprovalConfig::where('recap_user_id', $user->id)->exists());
             
             return redirect()->intended(route('admin.dashboard'))
                 ->with('success', 'Selamat datang, ' . $user->name);

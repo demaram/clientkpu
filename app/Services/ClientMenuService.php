@@ -74,16 +74,22 @@ class ClientMenuService
     /**
      * Check whether the current user is a recap_user_id on any approval config.
      *
-     * Falls back to the session key set by ClientAuth middleware when the
-     * Laravel web guard hasn't resolved the user yet.
+     * Priority order to avoid unnecessary DB queries:
+     *  1. Session flag set at login time (no DB hit).
+     *  2. DB fallback for sessions that pre-date the session flag being stored.
      *
      * @return bool
      */
     private function isRecapUser(): bool
     {
-        // Prefer Laravel auth; fall back to the session key that ClientAuth middleware validates.
-        // Auth::id() may be null when the web guard hasn't been resolved yet, because
-        // these routes only run client.auth (not Laravel's auth middleware).
+        // Session flag is written by LoginController on every successful login.
+        if (Session::has('is_recap_user')) {
+            return (bool) Session::get('is_recap_user');
+        }
+
+        // Fallback: DB check.
+        // Auth::id() may be null when the web guard hasn't been resolved yet
+        // because these routes only use client.auth (not Laravel's auth middleware).
         $userId = Auth::id() ?? data_get(Session::get('user'), 'id');
 
         if (!$userId) {

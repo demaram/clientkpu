@@ -48,7 +48,11 @@ class ClientRoleMenuFilter implements FilterInterface
 
     /**
      * Check once per request whether the current user is a recap user.
-     * Result is cached in a static property to prevent N+1 queries.
+     *
+     * Priority order to avoid unnecessary DB queries:
+     *  1. Static per-request cache (already resolved this request).
+     *  2. Session flag set at login time (no DB hit).
+     *  3. DB fallback for edge cases where the session flag is absent.
      *
      * @return bool
      */
@@ -58,6 +62,12 @@ class ClientRoleMenuFilter implements FilterInterface
             return self::$isRecapUser;
         }
 
+        // Session flag is written by LoginController on every successful login.
+        if (Session::has('is_recap_user')) {
+            return self::$isRecapUser = (bool) Session::get('is_recap_user');
+        }
+
+        // Fallback: DB check for sessions that pre-date the flag being stored.
         $userId = Auth::id() ?? data_get(Session::get('user'), 'id');
 
         if (!$userId) {
