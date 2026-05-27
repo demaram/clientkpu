@@ -176,6 +176,14 @@ class LemburDatatable
 						$buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
 							<i class="fas fa-times"></i>
 						</button>';
+
+						// Edit button — only when the current step has can_edit_data = true
+						if ($currentStep && $currentStep->can_edit_data) {
+							$editUrl = route('admin.lembur.edit', $row->id);
+							$buttons .= '<a href="' . $editUrl . '" class="btn btn-sm btn-warning" title="Edit Data Lembur">
+								<i class="fas fa-edit"></i>
+							</a>';
+						}
 					}
 				}
 

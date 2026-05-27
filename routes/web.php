@@ -29,6 +29,8 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
     // Lembur Routes
     Route::prefix('lembur')->group(function () {
         Route::get('/', [LemburController::class, 'index'])->name('admin.lembur.index');
+        Route::get('/{id}/edit', [LemburController::class, 'edit'])->name('admin.lembur.edit');
+        Route::put('/{id}', [LemburController::class, 'update'])->name('admin.lembur.update');
         Route::get('/{id}', [LemburController::class, 'show'])->name('admin.lembur.show');
         Route::post('/{id}/approve', [LemburController::class, 'approve'])->name('admin.lembur.approve');
         Route::post('/{id}/reject', [LemburController::class, 'reject'])->name('admin.lembur.reject');

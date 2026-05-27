@@ -15,11 +15,11 @@ class LemburApprovalConfigStep extends Model
         'approver_user_id',
         'jabatan',
         'jabatan_level',
-        'can_override_client',
+        'can_edit_data',
     ];
 
     protected $casts = [
-        'can_override_client' => 'boolean',
+        'can_edit_data' => 'boolean',
     ];
 
     public function config()

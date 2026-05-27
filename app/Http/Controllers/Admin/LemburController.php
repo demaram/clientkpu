@@ -134,9 +134,10 @@ class LemburController extends Controller
 
         // Determine if current user can act on this lembur
         $canAct = false;
+        $step   = null;
         if ($lembur->status === 'waiting_approval') {
             if ($lembur->approval_config_id) {
-                $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+                $step   = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
                     ->where('step_order', $lembur->current_approval_step)
                     ->first();
                 $canAct = $step && $step->approver_user_id == Auth::id();
@@ -144,6 +145,8 @@ class LemburController extends Controller
                 $canAct = true;
             }
         }
+
+        $canEdit = $canAct && $lembur->approval_config_id && $step && $step->can_edit_data;
 
         return response()->json([
             'success' => true,
@@ -189,8 +192,139 @@ class LemburController extends Controller
                 'weekly_period'         => 'Minggu ke-' . $lemburDate->weekOfYear . ' ' . $lemburDate->year,
                 'step_progress'         => $stepProgress,
                 'can_act'               => $canAct,
+                'can_edit'              => $canEdit,
             ]
         ]);
+    }
+
+    /**
+     * Show the edit form for a lembur record.
+     *
+     * Guards:
+     * - Client owns the lembur
+     * - Status must be waiting_approval
+     * - Current user must be the designated approver for this step
+     * - The current step must have can_edit_data = true
+     *
+     * @param  int  $id  LemburKaryawan primary key
+     * @return \Illuminate\View\View
+     */
+    public function edit(int $id)
+    {
+        $lembur = LemburKaryawan::with(['user', 'client'])->findOrFail($id);
+
+        $user = Auth::user();
+        if ($user->id_client && $lembur->client_id != $user->id_client) {
+            abort(403, 'Unauthorized access');
+        }
+
+        if ($lembur->status !== 'waiting_approval') {
+            return redirect()->route('admin.lembur.index')
+                ->with('error', 'Lembur ini tidak dalam status menunggu approval');
+        }
+
+        if (!$lembur->approval_config_id) {
+            abort(403, 'Lembur ini tidak menggunakan konfigurasi approval bertahap');
+        }
+
+        $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+            ->where('step_order', $lembur->current_approval_step)
+            ->first();
+
+        if (!$step || $step->approver_user_id != Auth::id() || !$step->can_edit_data) {
+            abort(403, 'Anda tidak berwenang mengedit data lembur ini');
+        }
+
+        return view('admin.lembur.form', compact('lembur'))->with('act', 'edit');
+    }
+
+    /**
+     * Proxy an edit (PUT) action to the Payroll API with encrypted subscription headers.
+     *
+     * Applies the same access + can_edit_data guards as edit().
+     * Sends start and end datetimes to payroll PUT /api/data-lembur/{id}.
+     * On success redirects to index with flash. On failure redirects back with error.
+     *
+     * @param  Request  $request  Must include start and end (datetime-local format)
+     * @param  int      $id       LemburKaryawan primary key
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, int $id)
+    {
+        $request->validate([
+            'start' => ['required', 'date_format:Y-m-d\TH:i'],
+            'end'   => ['required', 'date_format:Y-m-d\TH:i', 'after:start'],
+        ]);
+
+        $lembur = LemburKaryawan::findOrFail($id);
+
+        $user = Auth::user();
+        if ($user->id_client && $lembur->client_id != $user->id_client) {
+            abort(403, 'Unauthorized access');
+        }
+
+        if ($lembur->status !== 'waiting_approval') {
+            return back()->withInput()->with('error', 'Lembur ini tidak dalam status menunggu approval');
+        }
+
+        if (!$lembur->approval_config_id) {
+            abort(403, 'Lembur ini tidak menggunakan konfigurasi approval bertahap');
+        }
+
+        $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+            ->where('step_order', $lembur->current_approval_step)
+            ->first();
+
+        if (!$step || $step->approver_user_id != Auth::id() || !$step->can_edit_data) {
+            abort(403, 'Anda tidak berwenang mengedit data lembur ini');
+        }
+
+        $payrollBaseUrl  = rtrim(config('services.payroll.api_url'));
+        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
+
+        if (!$payrollBaseUrl || !$subscriptionKey) {
+            return back()->withInput()
+                ->with('error', 'Konfigurasi Payroll API atau Subscription Key belum diatur');
+        }
+
+        $endpoint = 'api/data-lembur/' . $id;
+        $headers  = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'PUT', $endpoint);
+
+        if (empty($headers['X-Subscription-Encrypted'])) {
+            return back()->withInput()
+                ->with('error', 'Gagal mengenkripsi subscription payload');
+        }
+
+        // Convert datetime-local (Y-m-d\TH:i) to MySQL datetime (Y-m-d H:i:s)
+        $startFormatted = date('Y-m-d H:i:s', strtotime($request->input('start')));
+        $endFormatted   = date('Y-m-d H:i:s', strtotime($request->input('end')));
+
+        try {
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->put($payrollBaseUrl . $endpoint, [
+                    'start'     => $startFormatted,
+                    'end'       => $endFormatted,
+                    'status_by' => Auth::id(),
+                ]);
+
+            if (!$response->successful()) {
+                return back()->withInput()
+                    ->with('error', $response->json('message') ?? 'Gagal memperbarui data lembur');
+            }
+
+            return redirect()->route('admin.lembur.index')
+                ->with('success', 'Data lembur berhasil diperbarui');
+        } catch (\Throwable $e) {
+            Log::error('Update lembur payroll API gagal', [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()
+                ->with('error', 'Terjadi kesalahan saat menghubungi Payroll API');
+        }
     }
 
     /**
