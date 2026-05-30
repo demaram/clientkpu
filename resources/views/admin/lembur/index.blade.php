@@ -302,6 +302,14 @@
                                 $('#btn-approve-modal, #btn-reject-modal').hide();
                             }
                         }
+
+                        // Rejection notes row
+                        if (statusLower === 'rejected') {
+                            $('#detail-rejection-notes').text(data.rejection_notes || '-');
+                            $('#row-rejection-notes').show();
+                        } else {
+                            $('#row-rejection-notes').hide();
+                        }
                         $('#detail-alasan').text(data.alasan || '-');
                         
                         // Live lembur statistics

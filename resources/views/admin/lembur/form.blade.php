@@ -52,7 +52,7 @@
                     <h3 class="card-title">Form Edit Data Lembur</h3>
                 </div>
 
-                <form method="POST" action="{{ route('admin.lembur.update', $lembur->id) }}" id="formEditLembur">
+                <form method="POST" action="{{ route('admin.lembur.update', $lembur->id) }}" id="formEditLembur" enctype="multipart/form-data">
                     @method('PUT')
                     @csrf
 
@@ -117,6 +117,60 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                                 <small class="text-muted">Waktu selesai harus setelah waktu mulai.</small>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        {{-- Foto Check-in --}}
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Foto Check-in</label>
+                            <div class="col-sm-8">
+                                @if ($startPhotoUrl)
+                                    <div class="mb-2">
+                                        <img src="{{ $startPhotoUrl }}" alt="Foto Check-in"
+                                             class="img-thumbnail" style="max-height: 160px;">
+                                    </div>
+                                    <input type="file" name="start_photo" class="form-control-file" disabled>
+                                    <small class="text-muted">Foto sudah diupload, tidak dapat diubah.</small>
+                                @else
+                                    <input
+                                        type="file"
+                                        name="start_photo"
+                                        class="form-control-file @error('start_photo') is-invalid @enderror"
+                                        accept="image/*"
+                                    >
+                                    @error('start_photo')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Format: JPG, PNG, GIF. Maks 5MB.</small>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Foto Check-out --}}
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Foto Check-out</label>
+                            <div class="col-sm-8">
+                                @if ($endPhotoUrl)
+                                    <div class="mb-2">
+                                        <img src="{{ $endPhotoUrl }}" alt="Foto Check-out"
+                                             class="img-thumbnail" style="max-height: 160px;">
+                                    </div>
+                                    <input type="file" name="end_photo" class="form-control-file" disabled>
+                                    <small class="text-muted">Foto sudah diupload, tidak dapat diubah.</small>
+                                @else
+                                    <input
+                                        type="file"
+                                        name="end_photo"
+                                        class="form-control-file @error('end_photo') is-invalid @enderror"
+                                        accept="image/*"
+                                    >
+                                    @error('end_photo')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Format: JPG, PNG, GIF. Maks 5MB.</small>
+                                @endif
                             </div>
                         </div>
 

@@ -62,7 +62,7 @@ class LemburController extends Controller
      */
     public function show($id)
     {
-        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy'])
+        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy', 'approvalLogs'])
             ->findOrFail($id);
 
         // Check if user has access to this lembur data
@@ -132,6 +132,9 @@ class LemburController extends Controller
             $stepProgress = $lembur->current_approval_step . '/' . $totalStepsCount;
         }
 
+        // Most recent rejection log
+        $rejectionLog = $lembur->approvalLogs->where('status', 'rejected')->sortByDesc('step_order')->first();
+
         // Determine if current user can act on this lembur
         $canAct = false;
         $step   = null;
@@ -193,6 +196,9 @@ class LemburController extends Controller
                 'step_progress'         => $stepProgress,
                 'can_act'               => $canAct,
                 'can_edit'              => $canEdit,
+                'rejection_notes'       => $lembur->status === 'rejected'
+                    ? ($rejectionLog ? ($rejectionLog->notes ?? '-') : '-')
+                    : null,
             ]
         ]);
     }
@@ -235,25 +241,37 @@ class LemburController extends Controller
             abort(403, 'Anda tidak berwenang mengedit data lembur ini');
         }
 
-        return view('admin.lembur.form', compact('lembur'))->with('act', 'edit');
+        $startPhotoUrl = $lembur->start_photo && Storage::disk('custom_public')->exists($lembur->start_photo)
+            ? Storage::disk('custom_public')->url($lembur->start_photo)
+            : null;
+
+        $endPhotoUrl = $lembur->end_photo && Storage::disk('custom_public')->exists($lembur->end_photo)
+            ? Storage::disk('custom_public')->url($lembur->end_photo)
+            : null;
+
+        return view('admin.lembur.form', compact('lembur', 'startPhotoUrl', 'endPhotoUrl'))->with('act', 'edit');
     }
 
     /**
      * Proxy an edit (PUT) action to the Payroll API with encrypted subscription headers.
      *
      * Applies the same access + can_edit_data guards as edit().
-     * Sends start and end datetimes to payroll PUT /api/data-lembur/{id}.
-     * On success redirects to index with flash. On failure redirects back with error.
+     * Stores any uploaded photos directly to the shared custom_public disk, then sends
+     * the resulting file paths to payroll PUT /api/data-lembur/{id}.
+     * Photos are only accepted when the existing field is null.
+     * Stored files are deleted if the API call fails (rollback).
      *
-     * @param  Request  $request  Must include start and end (datetime-local format)
+     * @param  Request  $request  Must include start and end (datetime-local format); optionally start_photo/end_photo
      * @param  int      $id       LemburKaryawan primary key
      * @return \Illuminate\Http\RedirectResponse
      */
     public function update(Request $request, int $id)
     {
         $request->validate([
-            'start' => ['required', 'date_format:Y-m-d\TH:i'],
-            'end'   => ['required', 'date_format:Y-m-d\TH:i', 'after:start'],
+            'start'       => ['required', 'date_format:Y-m-d\TH:i'],
+            'end'         => ['required', 'date_format:Y-m-d\TH:i', 'after:start'],
+            'start_photo' => ['nullable', 'image', 'max:5120'],
+            'end_photo'   => ['nullable', 'image', 'max:5120'],
         ]);
 
         $lembur = LemburKaryawan::findOrFail($id);
@@ -295,21 +313,44 @@ class LemburController extends Controller
                 ->with('error', 'Gagal mengenkripsi subscription payload');
         }
 
+        // Store photos only when the existing field is null
+        $storedStartPhoto = null;
+        $storedEndPhoto   = null;
+
+        if ($request->hasFile('start_photo') && !$lembur->start_photo) {
+            $storedStartPhoto = $this->storePhoto($request->file('start_photo'), $lembur->user_id, 'lembur_in');
+        }
+
+        if ($request->hasFile('end_photo') && !$lembur->end_photo) {
+            $storedEndPhoto = $this->storePhoto($request->file('end_photo'), $lembur->user_id, 'lembur_out');
+        }
+
         // Convert datetime-local (Y-m-d\TH:i) to MySQL datetime (Y-m-d H:i:s)
         $startFormatted = date('Y-m-d H:i:s', strtotime($request->input('start')));
         $endFormatted   = date('Y-m-d H:i:s', strtotime($request->input('end')));
+
+        $payload = [
+            'start'     => $startFormatted,
+            'end'       => $endFormatted,
+            'status_by' => Auth::id(),
+        ];
+
+        if ($storedStartPhoto) {
+            $payload['start_photo'] = $storedStartPhoto;
+        }
+
+        if ($storedEndPhoto) {
+            $payload['end_photo'] = $storedEndPhoto;
+        }
 
         try {
             $response = Http::timeout(30)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->put($payrollBaseUrl . $endpoint, [
-                    'start'     => $startFormatted,
-                    'end'       => $endFormatted,
-                    'status_by' => Auth::id(),
-                ]);
+                ->put($payrollBaseUrl . $endpoint, $payload);
 
             if (!$response->successful()) {
+                $this->rollbackPhotos($storedStartPhoto, $storedEndPhoto);
                 return back()->withInput()
                     ->with('error', $response->json('message') ?? 'Gagal memperbarui data lembur');
             }
@@ -317,6 +358,8 @@ class LemburController extends Controller
             return redirect()->route('admin.lembur.index')
                 ->with('success', 'Data lembur berhasil diperbarui');
         } catch (\Throwable $e) {
+            $this->rollbackPhotos($storedStartPhoto, $storedEndPhoto);
+
             Log::error('Update lembur payroll API gagal', [
                 'id'    => $id,
                 'error' => $e->getMessage(),
@@ -324,6 +367,40 @@ class LemburController extends Controller
 
             return back()->withInput()
                 ->with('error', 'Terjadi kesalahan saat menghubungi Payroll API');
+        }
+    }
+
+    /**
+     * Store a photo to the shared custom_public disk using the payroll naming convention.
+     *
+     * @param  \Illuminate\Http\UploadedFile  $file
+     * @param  int                            $userId  Karyawan user ID (not the acting user)
+     * @param  string                         $prefix  'lembur_in' or 'lembur_out'
+     * @return string  Relative path stored on disk
+     */
+    private function storePhoto($file, int $userId, string $prefix): string
+    {
+        $filename = "{$prefix}_{$userId}_" . date('YmdHis') . '.' . $file->extension();
+        $path     = "lembur/{$filename}";
+        Storage::disk('custom_public')->put($path, file_get_contents($file->getRealPath()));
+        return $path;
+    }
+
+    /**
+     * Delete photos that were stored during an update that subsequently failed.
+     *
+     * @param  string|null  $startPhoto
+     * @param  string|null  $endPhoto
+     * @return void
+     */
+    private function rollbackPhotos(?string $startPhoto, ?string $endPhoto): void
+    {
+        if ($startPhoto) {
+            Storage::disk('custom_public')->delete($startPhoto);
+        }
+
+        if ($endPhoto) {
+            Storage::disk('custom_public')->delete($endPhoto);
         }
     }
 
