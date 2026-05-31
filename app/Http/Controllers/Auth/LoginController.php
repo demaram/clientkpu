@@ -58,7 +58,7 @@ class LoginController extends Controller
             $user = Auth::user();
 
             // Reject inactive accounts
-            if ((int) $user->status === 0) {
+            if ((int) $user->is_active == 0) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
