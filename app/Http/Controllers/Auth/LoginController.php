@@ -17,7 +17,7 @@ class LoginController extends Controller
 
     /**
      * Show the login form
-     * 
+     *
      * @return \Illuminate\View\View
      */
     public function showLoginForm()
@@ -27,13 +27,13 @@ class LoginController extends Controller
 
     /**
      * Handle login request
-     * 
+     *
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function login(Request $request)
     {
-        
+
         // Validasi input
         $request->validate([
             'email' => 'required|email',
@@ -49,23 +49,37 @@ class LoginController extends Controller
         $credentials = $request->only('email', 'password');
         $remember = $request->filled('remember');
         $checkCredectials = Auth::attempt($credentials, $remember);
+
         if ($checkCredectials) {
             // Regenerate session dulu untuk keamanan
             $request->session()->regenerate();
-            
+
             // Get user instance
             $user = Auth::user();
-            
+
+            // Reject inactive accounts
+            if ((int) $user->status === 0) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()
+                    ->withInput($request->only('email'))
+                    ->withErrors([
+                        'email' => 'Akun Anda tidak aktif. Silakan hubungi administrator.'
+                    ]);
+            }
+
             // Check if user has client role
             try {
                 // Load roles relationship
                 $hasClientRole = $user->hasRole('client');
-                
+
                 if (!$hasClientRole) {
                     Auth::logout();
                     $request->session()->invalidate();
                     $request->session()->regenerateToken();
-                    
+
                     return back()
                         ->withInput($request->only('email'))
                         ->withErrors([
@@ -73,9 +87,9 @@ class LoginController extends Controller
                         ]);
                 }
             } catch (\Exception $e) {
-                
+
             }
-            
+
             // Set session untuk ClientAuth middleware
             Session::put('auth_token', $user->remember_token ?? 'local_auth_' . $user->id);
 
@@ -87,7 +101,7 @@ class LoginController extends Controller
 
             // Cache recap-user flag in session so every page avoids a DB hit
             Session::put('is_recap_user', LemburApprovalConfig::where('recap_user_id', $user->id)->exists());
-            
+
             return redirect()->intended(route('admin.dashboard'))
                 ->with('success', 'Selamat datang, ' . $user->name);
         }
@@ -101,7 +115,7 @@ class LoginController extends Controller
 
     /**
      * Handle logout request
-     * 
+     *
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
