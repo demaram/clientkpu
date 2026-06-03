@@ -85,14 +85,7 @@
                             <th>Overtime Pay</th>
                             <th width="15%">Action</th>
                         </tr>
-                    </thead>
-                    <tfoot>
-                        <tr>
-                            <th colspan="6" class="text-right">Total Durasi (data terfilter):</th>
-                            <th id="totalDurasiCell">0 jam 0 menit</th>
-                            <th colspan="4"></th>
-                        </tr>
-                    </tfoot>
+                    </thead>    
                     <tbody>
                     </tbody>
                 </table>
@@ -106,6 +99,7 @@
 @section('css')
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
         .btn-group .btn {
             margin-right: 2px;
@@ -123,8 +117,14 @@
     <script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script>
+        const showOvertimePay = {{ $showOvertimePay ? 'true' : 'false' }};
+
         $(document).ready(function() {
+            if (!showOvertimePay) {
+                $('#row-overtime-pay').hide();
+            }
             $('#filterDateRange').daterangepicker({
                 autoUpdateInput: false,
                 timePicker: true,
@@ -205,7 +205,7 @@
                     {data: 'counted_hours', name: 'counted_hours',},
                     {data: 'alasan', name: 'alasan'},
                     {data: 'status_badge', name: 'status'},
-                    {data: 'overtime_pay', name: 'overtime_pay'},
+                    {data: 'overtime_pay', name: 'overtime_pay', visible: showOvertimePay},
                     {data: 'action', name: 'action', orderable: false, searchable: false}
                 ],
                 drawCallback: function() {
@@ -270,6 +270,14 @@
                             (data.status === 'Approved' ? 'success' : (data.status === 'Rejected' ? 'danger' : 'warning')) + 
                             '">' + data.status + '</span>');
 
+                        // Show step progress for multi-step
+                        if (data.step_progress) {
+                            $('#detail-step-progress').text('Step ' + data.step_progress);
+                            $('#row-step-progress').show();
+                        } else {
+                            $('#row-step-progress').hide();
+                        }
+
                         // Show approved/rejected at & by
                         var statusLower = (data.status || '').toLowerCase();
                         if (statusLower === 'approved' || statusLower === 'rejected') {
@@ -287,7 +295,20 @@
                         } else {
                             $('#row-status-at').hide();
                             $('#row-status-by').hide();
-                            $('#btn-approve-modal, #btn-reject-modal').show();
+                            $('#row-status-from').hide();
+                            if (data.can_act) {
+                                $('#btn-approve-modal, #btn-reject-modal').show();
+                            } else {
+                                $('#btn-approve-modal, #btn-reject-modal').hide();
+                            }
+                        }
+
+                        // Rejection notes row
+                        if (statusLower === 'rejected') {
+                            $('#detail-rejection-notes').text(data.rejection_notes || '-');
+                            $('#row-rejection-notes').show();
+                        } else {
+                            $('#row-rejection-notes').hide();
                         }
                         $('#detail-alasan').text(data.alasan || '-');
                         
@@ -350,53 +371,91 @@
 
         // Approve Lembur
         function approveLembur(id) {
-            if (!confirm('Apakah Anda yakin ingin approve lembur ini?')) {
-                return;
-            }
+            Swal.fire({
+                title: 'Approve Lembur?',
+                text: 'Apakah Anda yakin ingin menyetujui lembur ini?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Approve',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#28a745',
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
 
-            $.ajax({
-                url: '{{ url("admin/lembur") }}/' + id + '/approve',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        $('#lemburTable').DataTable().ajax.reload();
-                    } else {
-                        alert(response.message);
+                $.ajax({
+                    url: '{{ url("admin/lembur") }}/' + id + '/approve',
+                    type: 'POST',
+                    data: { _token: '{{ csrf_token() }}' },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: response.message,
+                                showConfirmButton: false,
+                                timer: 1500,
+                            });
+                            $('#lemburTable').DataTable().ajax.reload();
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal approve lembur', 'error');
                     }
-                },
-                error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal approve lembur'));
-                }
+                });
             });
         }
 
         // Reject Lembur
         function rejectLembur(id) {
-            if (!confirm('Apakah Anda yakin ingin reject lembur ini?')) {
-                return;
-            }
-
-            $.ajax({
-                url: '{{ url("admin/lembur") }}/' + id + '/reject',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        $('#lemburTable').DataTable().ajax.reload();
-                    } else {
-                        alert(response.message);
+            Swal.fire({
+                title: 'Reject Lembur',
+                html: '<p class="text-left mb-2">Masukkan alasan penolakan:</p>' +
+                      '<textarea id="swal-reject-notes" class="swal2-textarea" placeholder="Alasan penolakan..." style="height:100px;"></textarea>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Reject',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                preConfirm: function() {
+                    var notes = document.getElementById('swal-reject-notes').value.trim();
+                    if (!notes) {
+                        Swal.showValidationMessage('Alasan penolakan wajib diisi');
+                        return false;
                     }
-                },
-                error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal reject lembur'));
+                    return notes;
                 }
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
+
+                $.ajax({
+                    url: '{{ url("admin/lembur") }}/' + id + '/reject',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        notes: result.value,
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: response.message,
+                                showConfirmButton: false,
+                                timer: 1500,
+                            });
+                            $('#lemburTable').DataTable().ajax.reload();
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal reject lembur', 'error');
+                    }
+                });
             });
         }
 

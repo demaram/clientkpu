@@ -13,16 +13,30 @@ class GantiPasswordController extends Controller
 {
     private GantiPasswordService $gantiPasswordService;
 
+    /**
+     * @param  GantiPasswordService  $gantiPasswordService
+     */
     public function __construct(GantiPasswordService $gantiPasswordService)
     {
         $this->gantiPasswordService = $gantiPasswordService;
     }
 
+    /**
+     * Show the change-password form.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index(): View
     {
         return view('admin.ganti-password');
     }
 
+    /**
+     * Validate the current password and update it if correct.
+     *
+     * @param  Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request): RedirectResponse
     {
         $request->validate([

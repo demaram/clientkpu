@@ -14,6 +14,19 @@
             {{ session('success') }}
         </div>
     @endif
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Selamat Datang di Dashboard Admin</h3>
+                </div>
+                <div class="card-body">
+                    <p>Ini adalah Portal Client Kpusahatama.</p>
+                    <p>Anda telah berhasil login ke sistem. Gunakan menu di sebelah kiri untuk navigasi.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-md-12">
@@ -119,19 +132,26 @@
         </div>
     </div>
 
+    {{-- Monthly total-pay chart — visible to recap users only --}}
+    @if($isRecapUser && $chartData)
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
+            <div class="card card-primary">
                 <div class="card-header">
-                    <h3 class="card-title">Selamat Datang di Dashboard Admin</h3>
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        Total Lembur Dibayar per Bulan
+                    </h3>
                 </div>
                 <div class="card-body">
-                    <p>Ini adalah Portal Client Kpusahatama.</p>
-                    <p>Anda telah berhasil login ke sistem. Gunakan menu di sebelah kiri untuk navigasi.</p>
+                    <canvas id="lemburRekapChart" style="min-height: 280px;"></canvas>
                 </div>
             </div>
         </div>
     </div>
+    @endif
+
+
 @stop
 
 @section('css')
@@ -141,5 +161,45 @@
 @section('js')
     <script>
         console.log("Dashboard loaded!");
+
+        @if($isRecapUser && $chartData)
+        (function () {
+            var ctx = document.getElementById('lemburRekapChart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartData['labels']) !!},
+                    datasets: [{
+                        label: 'Total Pay (Rp)',
+                        data: {!! json_encode($chartData['values']) !!},
+                        backgroundColor: 'rgba(60, 141, 188, 0.75)',
+                        borderColor: 'rgba(60, 141, 188, 1)',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                callback: function (value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                return 'Rp ' + parseFloat(tooltipItem.yLabel).toLocaleString('id-ID');
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+        @endif
     </script>
 @stop

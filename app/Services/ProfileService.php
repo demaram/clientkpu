@@ -8,11 +8,20 @@ class ProfileService
 {
     private ProfileRepository $profileRepository;
 
+    /**
+     * @param  ProfileRepository  $profileRepository
+     */
     public function __construct(ProfileRepository $profileRepository)
     {
         $this->profileRepository = $profileRepository;
     }
 
+    /**
+     * Return a flat profile array for the given user, formatted for the view.
+     *
+     * @param  int    $userId
+     * @return array  Keys: nama, email, phone, perusahaan, lokasi, jabatan, deskripsi
+     */
     public function getProfile(int $userId): array
     {
         $user = $this->profileRepository->getProfile($userId);

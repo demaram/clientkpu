@@ -55,7 +55,7 @@ class LemburDatatable
 		}
 
 		$query = LemburKaryawan::query()
-			->with(['user', 'client'])
+			->with(['user', 'client', 'approvalConfig.steps'])
 			->when($clientId, function ($query) use ($clientId) {
 				return $query->where('client_id', $clientId);
 			})
@@ -137,6 +137,11 @@ class LemburDatatable
 				return $hours . ' jam ' . $minutes . ' menit';
 			})
 			->addColumn('status_badge', function ($row) {
+				if ($row->status === 'waiting_approval' && $row->approval_config_id && $row->approvalConfig) {
+					$totalSteps = $row->approvalConfig->steps->count();
+					return '<span class="badge badge-secondary">Waiting Approval (' . $row->current_approval_step . '/' . $totalSteps . ')</span>';
+				}
+
 				$badges = [
 					'waiting_approval' => '<span class="badge badge-secondary">Waiting Approval</span>',
 					'pending' => '<span class="badge badge-warning">On Process</span>',
@@ -154,12 +159,32 @@ class LemburDatatable
 				</button>';
 
 				if ($row->status === 'waiting_approval') {
-					$buttons .= '<button type="button" class="btn btn-sm btn-success" onclick="approveLembur(' . $row->id . ')" title="Approve">
-						<i class="fas fa-check"></i>
-					</button>';
-					$buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
-						<i class="fas fa-times"></i>
-					</button>';
+					$canAct = true;
+
+					// For multi-step approval, only show buttons when it's this user's turn
+					if ($row->approval_config_id && $row->approvalConfig) {
+						$currentStep = $row->approvalConfig->steps
+							->where('step_order', $row->current_approval_step)
+							->first();
+						$canAct = $currentStep && $currentStep->approver_user_id == Auth::id();
+					}
+
+					if ($canAct) {
+						$buttons .= '<button type="button" class="btn btn-sm btn-success" onclick="approveLembur(' . $row->id . ')" title="Approve">
+							<i class="fas fa-check"></i>
+						</button>';
+						$buttons .= '<button type="button" class="btn btn-sm btn-danger" onclick="rejectLembur(' . $row->id . ')" title="Reject">
+							<i class="fas fa-times"></i>
+						</button>';
+
+						// Edit button — only when the current step has can_edit_data = true
+						if ($currentStep && $currentStep->can_edit_data) {
+							$editUrl = route('admin.lembur.edit', $row->id);
+							$buttons .= '<a href="' . $editUrl . '" class="btn btn-sm btn-warning" title="Edit Data Lembur">
+								<i class="fas fa-edit"></i>
+							</a>';
+						}
+					}
 				}
 
 				$buttons .= '</div>';

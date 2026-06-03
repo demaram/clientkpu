@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,13 +26,5 @@ class AppServiceProvider extends ServiceProvider
             $user = Session::get('user');
             $view->with('authUser', $user);
         });
-        
-        // Configure AdminLTE user info
-        if (config('adminlte')) {
-            config([
-                'adminlte.usermenu_enabled' => true,
-                'adminlte.usermenu_header' => true,
-            ]);
-        }
     }
 }

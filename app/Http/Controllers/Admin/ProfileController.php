@@ -11,11 +11,19 @@ class ProfileController extends Controller
 {
     private ProfileService $profileService;
 
+    /**
+     * @param  ProfileService  $profileService
+     */
     public function __construct(ProfileService $profileService)
     {
         $this->profileService = $profileService;
     }
 
+    /**
+     * Show the profile page for the logged-in user.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index(): View
     {
         $profile = $this->profileService->getProfile(Auth::id());

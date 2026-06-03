@@ -29,6 +29,8 @@ class LemburKaryawan extends Model
         'status_at',
         'status_by',
         'status_from',
+        'approval_config_id',
+        'current_approval_step',
     ];
 
     public function history()
@@ -73,5 +75,20 @@ class LemburKaryawan extends Model
     public function checkOutLocation()
     {
         return $this->hasOne('App\Models\LemburLocation', 'id_lembur')->where('type', 'out');
+    }
+
+    public function approvalConfig()
+    {
+        return $this->belongsTo('App\Models\LemburApprovalConfig', 'approval_config_id');
+    }
+
+    public function approvalLogs()
+    {
+        return $this->hasMany('App\Models\LemburApprovalLog', 'lembur_id')->orderBy('step_order');
+    }
+
+    public function rekapItems()
+    {
+        return $this->hasMany('App\Models\LemburRekapItem', 'lembur_id');
     }
 }

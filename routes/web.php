@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LemburController;
+use App\Http\Controllers\Admin\LemburRekapController;
 use App\Http\Controllers\Admin\PiketController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -28,6 +29,8 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
     // Lembur Routes
     Route::prefix('lembur')->group(function () {
         Route::get('/', [LemburController::class, 'index'])->name('admin.lembur.index');
+        Route::get('/{id}/edit', [LemburController::class, 'edit'])->name('admin.lembur.edit');
+        Route::put('/{id}', [LemburController::class, 'update'])->name('admin.lembur.update');
         Route::get('/{id}', [LemburController::class, 'show'])->name('admin.lembur.show');
         Route::post('/{id}/approve', [LemburController::class, 'approve'])->name('admin.lembur.approve');
         Route::post('/{id}/reject', [LemburController::class, 'reject'])->name('admin.lembur.reject');
@@ -38,6 +41,15 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/{id}', [PiketController::class, 'show'])->name('admin.piket.show');
         Route::post('/{id}/approve', [PiketController::class, 'approve'])->name('admin.piket.approve');
         Route::post('/{id}/reject', [PiketController::class, 'reject'])->name('admin.piket.reject');
+    });
+
+    // Rekap Lembur
+    Route::prefix('rekap-lembur')->name('admin.rekap-lembur.')->group(function () {
+        Route::get('/',       [LemburRekapController::class, 'index'])->name('index');
+        Route::get('/form',   [LemburRekapController::class, 'form'])->name('form');
+        Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
+        Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
+        Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
     });
 
     // Profile
