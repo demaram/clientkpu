@@ -14,7 +14,7 @@ class LemburDatatable
 {
 	public function render(Request $request)
 	{
-		$user = User::with('areas')->find(Auth::id());
+		$user = User::find(Auth::id());
 
 		if (!$user) {
 			abort(401);
@@ -59,7 +59,6 @@ class LemburDatatable
 			->when($clientId, function ($query) use ($clientId) {
 				return $query->where('client_id', $clientId);
 			})
-			->whereIn('project_id', $projectIds)
 			->where('type', 'lembur')
 			->when($namaKaryawan !== '', function ($query) use ($namaKaryawan) {
 				$query->whereHas('user', function ($userQuery) use ($namaKaryawan) {
