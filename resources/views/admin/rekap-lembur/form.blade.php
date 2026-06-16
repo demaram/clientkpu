@@ -108,8 +108,8 @@
                     </table>
                 </div>
 
-                <div class="mt-3">
-                    <form method="POST" action="{{ route('admin.rekap-lembur.approve') }}">
+                <div class="mt-3 d-flex justify-content-center gap-2">
+                    <form method="POST" action="{{ route('admin.rekap-lembur.approve') }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="month" value="{{ $month }}">
                         <button type="submit" name="action" value="approve" class="btn btn-success mr-2"

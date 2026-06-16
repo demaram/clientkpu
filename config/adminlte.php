@@ -14,10 +14,10 @@ return [
     |
     */
 
-    'title' => 'KPUsahatama',
+    'title' => '',
     'title_prefix' => '',
     'title_postfix' => ' - Admin Portal',
-    'title_logo' => 'logo2.webp',
+    'title_logo' => 'logo_dashboard.png',
 
     /*
     |--------------------------------------------------------------------------
@@ -64,9 +64,9 @@ return [
     |
     */
 
-    'logo' => 'KPUsahatama',
-    'logo_img' => 'logo2.webp',
-    'logo_img_class' => 'brand-image img-circle',
+    'logo' => '',
+    'logo_img' => 'logo_dashboard.png',
+    'logo_img_class' => 'brand-image',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-sm',
     'logo_img_alt' => 'KPUsahatama Logo',
@@ -87,11 +87,11 @@ return [
     'auth_logo' => [
         'enabled' => true,
         'img' => [
-            'path' => 'logo2.webp',
+            'path' => 'logo_login.png',
             'alt' => 'KPUsahatama Logo',
             'class' => '',
-            'width' => 100,
-            'height' => 125,
+            'width' => 200,
+            'height' => 225,
         ],
     ],
 
@@ -114,11 +114,11 @@ return [
         'enabled' => true,
         'mode' => 'fullscreen',
         'img' => [
-            'path' => 'logo.png',
-            'alt' => 'AdminLTE Preloader Image',
-            'effect' => 'animation__shake',
-            'width' => 400,
-            'height' => 200,
+            'path' => 'logo_login.png',
+            'alt' => 'KPUsahatama Preloader',
+            'effect' => '',
+            'width' => 200,
+            'height' => 225,
         ],
     ],
 

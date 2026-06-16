@@ -99,6 +99,7 @@
 @section('css')
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
         .btn-group .btn {
             margin-right: 2px;
@@ -120,6 +121,7 @@
     <script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script>
         $(document).ready(function() {
             $('#filterDateRange').daterangepicker({
@@ -331,53 +333,91 @@
 
         // Approve piket
         function approvePiket(id) {
-            if (!confirm('Apakah Anda yakin ingin approve piket ini?')) {
-                return;
-            }
+            Swal.fire({
+                title: 'Approve Piket?',
+                text: 'Apakah Anda yakin ingin menyetujui piket ini?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Approve',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#28a745',
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
 
-            $.ajax({
-                url: '{{ url("admin/piket") }}/' + id + '/approve',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        $('#piketTable').DataTable().ajax.reload();
-                    } else {
-                        alert(response.message);
+                $.ajax({
+                    url: '{{ url("admin/piket") }}/' + id + '/approve',
+                    type: 'POST',
+                    data: { _token: '{{ csrf_token() }}' },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: response.message,
+                                showConfirmButton: false,
+                                timer: 1500,
+                            });
+                            $('#piketTable').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal approve piket', 'error');
                     }
-                },
-                error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal approve piket'));
-                }
+                });
             });
         }
 
         // Reject piket
         function rejectPiket(id) {
-            if (!confirm('Apakah Anda yakin ingin reject piket ini?')) {
-                return;
-            }
-
-            $.ajax({
-                url: '{{ url("admin/piket") }}/' + id + '/reject',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        $('#piketTable').DataTable().ajax.reload();
-                    } else {
-                        alert(response.message);
+            Swal.fire({
+                title: 'Reject Piket',
+                html: '<p class="text-left mb-2">Masukkan alasan penolakan:</p>' +
+                      '<textarea id="swal-reject-notes" class="swal2-textarea" placeholder="Alasan penolakan..." style="height:100px;"></textarea>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Reject',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                preConfirm: function() {
+                    var notes = document.getElementById('swal-reject-notes').value.trim();
+                    if (!notes) {
+                        Swal.showValidationMessage('Alasan penolakan wajib diisi');
+                        return false;
                     }
-                },
-                error: function(xhr) {
-                    alert('Error: ' + (xhr.responseJSON?.message || 'Gagal reject Piket'));
+                    return notes;
                 }
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
+
+                $.ajax({
+                    url: '{{ url("admin/piket") }}/' + id + '/reject',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        notes: result.value,
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: response.message,
+                                showConfirmButton: false,
+                                timer: 1500,
+                            });
+                            $('#piketTable').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal reject piket', 'error');
+                    }
+                });
             });
         }
 

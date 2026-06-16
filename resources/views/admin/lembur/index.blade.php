@@ -396,7 +396,7 @@
                                 showConfirmButton: false,
                                 timer: 1500,
                             });
-                            $('#lemburTable').DataTable().ajax.reload();
+                            $('#lemburTable').DataTable().ajax.reload(null, false);
                         } else {
                             Swal.fire('Gagal', response.message, 'error');
                         }
@@ -447,7 +447,7 @@
                                 showConfirmButton: false,
                                 timer: 1500,
                             });
-                            $('#lemburTable').DataTable().ajax.reload();
+                            $('#lemburTable').DataTable().ajax.reload(null, false);
                         } else {
                             Swal.fire('Gagal', response.message, 'error');
                         }

@@ -15,15 +15,14 @@
         class="brand-link {{ config('adminlte.classes_brand') }}"
     @endif>
 
-    {{-- Small brand logo --}}
+    {{-- Brand logo --}}
     <img src="{{ asset(config('adminlte.logo_img', 'vendor/adminlte/dist/img/AdminLTELogo.png')) }}"
          alt="{{ config('adminlte.logo_img_alt', 'AdminLTE') }}"
-         class="{{ config('adminlte.logo_img_class', 'brand-image img-circle elevation-3') }}"
-         style="opacity:.8">
+         style="max-height: 42px; width: auto; max-width: 200px; display: block; margin: 0 auto;">
 
     {{-- Brand text --}}
     <span class="brand-text font-weight-light {{ config('adminlte.classes_brand_text') }}">
-        {!! config('adminlte.logo', '<b>Admin</b>LTE') !!}
+        {!! config('adminlte.logo', '') !!}
     </span>
 
 </a>
