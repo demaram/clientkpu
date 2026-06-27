@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\PiketController;
 use App\Http\Controllers\Admin\PiketRekapController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SppdController;
 use App\Http\Controllers\Auth\LoginController;
 
 // Redirect root ke login
@@ -68,6 +69,13 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/piket/{id}/detail-ajax', [PiketRekapController::class, 'detailAjax'])->name('detail-ajax');
     });
 
+    // SPPD Routes
+    Route::prefix('sppd')->group(function () {
+        Route::get('/', [SppdController::class, 'index'])->name('admin.sppd.index');
+        Route::get('/{id}', [SppdController::class, 'show'])->name('admin.sppd.show');
+        Route::post('/{id}/approve', [SppdController::class, 'approve'])->name('admin.sppd.approve');
+        Route::post('/{id}/reject', [SppdController::class, 'reject'])->name('admin.sppd.reject');
+    });
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'index'])->name('admin.profile.index');
