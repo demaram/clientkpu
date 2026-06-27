@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\LemburRekapController;
 use App\Http\Controllers\Admin\PiketController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SppdController;
 use App\Http\Controllers\Auth\LoginController;
 
 // Redirect root ke login
@@ -50,6 +51,14 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
         Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
         Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
+    });
+
+    // SPPD Routes
+    Route::prefix('sppd')->group(function () {
+        Route::get('/', [SppdController::class, 'index'])->name('admin.sppd.index');
+        Route::get('/{id}', [SppdController::class, 'show'])->name('admin.sppd.show');
+        Route::post('/{id}/approve', [SppdController::class, 'approve'])->name('admin.sppd.approve');
+        Route::post('/{id}/reject', [SppdController::class, 'reject'])->name('admin.sppd.reject');
     });
 
     // Profile

@@ -132,6 +132,24 @@
         </div>
     </div>
 
+    {{-- SPPD Pending Widget --}}
+    @if($sppdPending > 0)
+    <div class="row">
+        <div class="col-lg-4 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ $sppdPending }}</h3>
+                    <p>SPPD Menunggu Approval Anda</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-plane"></i>
+                </div>
+                <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">Lihat SPPD <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Monthly total-pay chart — visible to recap users only --}}
     @if($isRecapUser && $chartData)
     <div class="row">

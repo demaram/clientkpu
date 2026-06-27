@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\LemburKaryawan;
 use App\Models\LemburRekap;
+use App\Models\Sppd;
+use App\Models\SppdApprovalConfigStep;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -78,6 +80,18 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('admin.dashboard', compact('user', 'lemburCounts', 'isRecapUser', 'chartData'));
+        // --- SPPD pending count (waiting_approval with client-step active) ---
+        $sppdPending = 0;
+        if ($clientId) {
+            $sppdPending = Sppd::where('client_id', $clientId)
+                ->where('status', 'waiting_approval')
+                ->whereHas('approvalConfig.steps', function ($q) {
+                    $q->whereColumn('step_order', 'sppds.current_approval_step')
+                      ->where('actor_type', 'client');
+                })
+                ->count();
+        }
+
+        return view('admin.dashboard', compact('user', 'lemburCounts', 'isRecapUser', 'chartData', 'sppdPending'));
     }
 }
