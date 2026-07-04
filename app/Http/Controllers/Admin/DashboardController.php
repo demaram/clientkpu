@@ -86,7 +86,7 @@ class DashboardController extends Controller
             $sppdPending = Sppd::where('client_id', $clientId)
                 ->where('status', 'waiting_approval')
                 ->whereHas('approvalConfig.steps', function ($q) {
-                    $q->whereColumn('step_order', 'sppds.current_approval_step')
+                    $q->whereColumn('step_order', 'sppd.current_approval_step')
                       ->where('actor_type', 'client');
                 })
                 ->count();
