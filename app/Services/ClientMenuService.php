@@ -66,6 +66,11 @@ class ClientMenuService
                 'url'  => 'admin/rekap-lembur',
                 'icon' => 'fas fa-fw fa-file-invoice',
             ];
+            $menus[] = [
+                'text' => 'Rekap Piket',
+                'url'  => 'admin/rekap-piket',
+                'icon' => 'fas fa-fw fa-file-invoice',
+            ];
         }
 
         return $menus;

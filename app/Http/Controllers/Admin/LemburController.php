@@ -11,22 +11,20 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
-use App\Services\SubscriptionCipherService;
+use App\Services\LemburKaryawanWorkflowService;
 
 class LemburController extends Controller
 {
-    protected SubscriptionCipherService $subscriptionCipher;
+    protected LemburKaryawanWorkflowService $workflow;
 
     /**
-     * @param  SubscriptionCipherService  $subscriptionCipher
+     * @param  LemburKaryawanWorkflowService  $workflow
      */
-    public function __construct(SubscriptionCipherService $subscriptionCipher)
+    public function __construct(LemburKaryawanWorkflowService $workflow)
     {
-        $this->subscriptionCipher = $subscriptionCipher;
+        $this->workflow = $workflow;
     }
 
     /**
@@ -62,7 +60,7 @@ class LemburController extends Controller
      */
     public function show($id)
     {
-        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy', 'approvalLogs'])
+        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy', 'editedBy', 'approvalLogs'])
             ->findOrFail($id);
 
         // Check if user has access to this lembur data
@@ -176,6 +174,12 @@ class LemburController extends Controller
                 'status_from'      => in_array($lembur->status, ['approved', 'rejected']) && $lembur->status_from
                     ? ucfirst($lembur->status_from)
                     : null,
+                'edited_by_name'    => $lembur->edited_by && $lembur->editedBy
+                    ? $lembur->editedBy->name
+                    : null,
+                'edited_at'         => $lembur->edited_at
+                    ? date('d/m/Y H:i', strtotime($lembur->edited_at))
+                    : null,
                 'alasan'            => $lembur->alasan ?? '-',
                 'start_photo'       => $startPhotoUrl,
                 'end_photo'         => $endPhotoUrl,
@@ -233,9 +237,7 @@ class LemburController extends Controller
             abort(403, 'Lembur ini tidak menggunakan konfigurasi approval bertahap');
         }
 
-        $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-            ->where('step_order', $lembur->current_approval_step)
-            ->first();
+        $step = $this->workflow->getActiveStep($lembur);
 
         if (!$step || $step->approver_user_id != Auth::id() || !$step->can_edit_data) {
             abort(403, 'Anda tidak berwenang mengedit data lembur ini');
@@ -289,28 +291,10 @@ class LemburController extends Controller
             abort(403, 'Lembur ini tidak menggunakan konfigurasi approval bertahap');
         }
 
-        $step = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-            ->where('step_order', $lembur->current_approval_step)
-            ->first();
+        $step = $this->workflow->getActiveStep($lembur);
 
         if (!$step || $step->approver_user_id != Auth::id() || !$step->can_edit_data) {
             abort(403, 'Anda tidak berwenang mengedit data lembur ini');
-        }
-
-        $payrollBaseUrl  = rtrim(config('services.payroll.api_url'));
-        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
-
-        if (!$payrollBaseUrl || !$subscriptionKey) {
-            return back()->withInput()
-                ->with('error', 'Konfigurasi Payroll API atau Subscription Key belum diatur');
-        }
-
-        $endpoint = 'api/data-lembur/' . $id;
-        $headers  = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'PUT', $endpoint);
-
-        if (empty($headers['X-Subscription-Encrypted'])) {
-            return back()->withInput()
-                ->with('error', 'Gagal mengenkripsi subscription payload');
         }
 
         // Store photos only when the existing field is null
@@ -318,11 +302,11 @@ class LemburController extends Controller
         $storedEndPhoto   = null;
 
         if ($request->hasFile('start_photo') && !$lembur->start_photo) {
-            $storedStartPhoto = $this->storePhoto($request->file('start_photo'), $lembur->user_id, 'lembur_in');
+            $storedStartPhoto = $this->workflow->storePhoto($request->file('start_photo'), $lembur->user_id, 'lembur_in');
         }
 
         if ($request->hasFile('end_photo') && !$lembur->end_photo) {
-            $storedEndPhoto = $this->storePhoto($request->file('end_photo'), $lembur->user_id, 'lembur_out');
+            $storedEndPhoto = $this->workflow->storePhoto($request->file('end_photo'), $lembur->user_id, 'lembur_out');
         }
 
         // Convert datetime-local (Y-m-d\TH:i) to MySQL datetime (Y-m-d H:i:s)
@@ -343,65 +327,16 @@ class LemburController extends Controller
             $payload['end_photo'] = $storedEndPhoto;
         }
 
-        try {
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->withHeaders($headers)
-                ->put($payrollBaseUrl . $endpoint, $payload);
+        $result = $this->workflow->proxyUpdate('lembur', $id, $payload);
 
-            if (!$response->successful()) {
-                $this->rollbackPhotos($storedStartPhoto, $storedEndPhoto);
-                return back()->withInput()
-                    ->with('error', $response->json('message') ?? 'Gagal memperbarui data lembur');
-            }
-
-            return redirect()->route('admin.lembur.index')
-                ->with('success', 'Data lembur berhasil diperbarui');
-        } catch (\Throwable $e) {
-            $this->rollbackPhotos($storedStartPhoto, $storedEndPhoto);
-
-            Log::error('Update lembur payroll API gagal', [
-                'id'    => $id,
-                'error' => $e->getMessage(),
-            ]);
-
+        if (!$result['success']) {
+            $this->workflow->rollbackPhotos($storedStartPhoto, $storedEndPhoto);
             return back()->withInput()
-                ->with('error', 'Terjadi kesalahan saat menghubungi Payroll API');
-        }
-    }
-
-    /**
-     * Store a photo to the shared custom_public disk using the payroll naming convention.
-     *
-     * @param  \Illuminate\Http\UploadedFile  $file
-     * @param  int                            $userId  Karyawan user ID (not the acting user)
-     * @param  string                         $prefix  'lembur_in' or 'lembur_out'
-     * @return string  Relative path stored on disk
-     */
-    private function storePhoto($file, int $userId, string $prefix): string
-    {
-        $filename = "{$prefix}_{$userId}_" . date('YmdHis') . '.' . $file->extension();
-        $path     = "lembur/{$filename}";
-        Storage::disk('custom_public')->put($path, file_get_contents($file->getRealPath()));
-        return $path;
-    }
-
-    /**
-     * Delete photos that were stored during an update that subsequently failed.
-     *
-     * @param  string|null  $startPhoto
-     * @param  string|null  $endPhoto
-     * @return void
-     */
-    private function rollbackPhotos(?string $startPhoto, ?string $endPhoto): void
-    {
-        if ($startPhoto) {
-            Storage::disk('custom_public')->delete($startPhoto);
+                ->with('error', $result['body']['message'] ?? 'Gagal memperbarui data lembur');
         }
 
-        if ($endPhoto) {
-            Storage::disk('custom_public')->delete($endPhoto);
-        }
+        return redirect()->route('admin.lembur.index')
+            ->with('success', 'Data lembur berhasil diperbarui');
     }
 
     /**
@@ -436,9 +371,7 @@ class LemburController extends Controller
 
         // Step-aware validation: check if it's this user's turn
         if ($lembur->approval_config_id) {
-            $step = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-                ->where('step_order', $lembur->current_approval_step)
-                ->first();
+            $step = $this->workflow->getActiveStep($lembur);
 
             if ($step && $step->approver_user_id != Auth::id()) {
                 return response()->json([
@@ -448,59 +381,22 @@ class LemburController extends Controller
             }
         }
 
-        $payrollBaseUrl = rtrim(config('services.payroll.api_url'));
-        
-        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
-        
-        if (!$payrollBaseUrl || !$subscriptionKey) {
+        $result = $this->workflow->proxyApprove('lembur', $id, Auth::id());
+
+        if (!$result['success']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
-            ], 500);
+                'message' => $result['body']['message'] ?? 'Gagal approve lembur ke Payroll API'
+            ], $result['status']);
         }
 
-        $endpoint = 'api/data-lembur/approve/' . $id;
-        
-        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
-        
-        if (empty($headers['X-Subscription-Encrypted'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengenkripsi subscription payload'
-            ], 500);
-        }
-
-        try {
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint, ['status_by' => Auth::id(),'status_from' => 'client']);
-            
-            if (!$response->successful()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $response->json('message') ?? 'Gagal approve lembur ke Payroll API'
-                ], $response->status());
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => $response->json('message') ?? 'Lembur berhasil di-approve',
-                'status'       => $response->json('status'),
-                'current_step' => $response->json('current_step'),
-                'total_steps'  => $response->json('total_steps'),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Approve lembur payroll API gagal', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => $result['body']['message'] ?? 'Lembur berhasil di-approve',
+            'status'       => $result['body']['status'] ?? null,
+            'current_step' => $result['body']['current_step'] ?? null,
+            'total_steps'  => $result['body']['total_steps'] ?? null,
+        ]);
     }
 
     /**
@@ -533,9 +429,7 @@ class LemburController extends Controller
 
         // Step-aware validation
         if ($lembur->approval_config_id) {
-            $step = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-                ->where('step_order', $lembur->current_approval_step)
-                ->first();
+            $step = $this->workflow->getActiveStep($lembur);
 
             if ($step && $step->approver_user_id != Auth::id()) {
                 return response()->json([
@@ -545,60 +439,19 @@ class LemburController extends Controller
             }
         }
 
-        $payrollBaseUrl = config('services.payroll.api_url');
-        $subscriptionKey = (string) config('services.payroll.subscription_key', env('SUBSCRIPTION_KEY'));
+        $result = $this->workflow->proxyReject('lembur', $id, Auth::id(), $request->input('notes'));
 
-        if (!$payrollBaseUrl || !$subscriptionKey) {
+        if (!$result['success']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Konfigurasi Payroll API atau Subscription Key belum diatur'
-            ], 500);
+                'message' => $result['body']['message'] ?? 'Gagal reject lembur ke Payroll API'
+            ], $result['status']);
         }
 
-        $endpoint = 'api/data-lembur/reject/' . $id;
-        $headers = $this->subscriptionCipher->buildHeaders($subscriptionKey, 'POST', $endpoint);
-
-        if (empty($headers['X-Subscription-Encrypted'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengenkripsi subscription payload'
-            ], 500);
-        }
-
-        $payload = [
-            'status_by'   => Auth::id(),
-            'status_from' => 'client',
-            'notes'       => $request->input('notes'),
-        ];
-
-        try {
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->withHeaders($headers)
-                ->post($payrollBaseUrl . $endpoint, $payload);
-
-            if (!$response->successful()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $response->json('message') ?? 'Gagal reject lembur ke Payroll API'
-                ], $response->status());
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => $response->json('message') ?? 'Lembur berhasil di-reject',
-                'status' => $response->json('status'),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Reject lembur payroll API gagal', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghubungi Payroll API'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => $result['body']['message'] ?? 'Lembur berhasil di-reject',
+            'status'  => $result['body']['status'] ?? null,
+        ]);
     }
 }

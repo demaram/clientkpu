@@ -310,6 +310,18 @@
                         } else {
                             $('#row-rejection-notes').hide();
                         }
+
+                        // Last edited by/at row
+                        if (data.edited_by_name) {
+                            $('#detail-edited-by').text(data.edited_by_name);
+                            $('#detail-edited-at').text(data.edited_at || '-');
+                            $('#row-edited-by').show();
+                            $('#row-edited-at').show();
+                        } else {
+                            $('#row-edited-by').hide();
+                            $('#row-edited-at').hide();
+                        }
+
                         $('#detail-alasan').text(data.alasan || '-');
                         
                         // Live lembur statistics

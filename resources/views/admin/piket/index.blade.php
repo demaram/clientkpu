@@ -259,6 +259,14 @@
                             (data.status === 'Approved' ? 'success' : (data.status === 'Rejected' ? 'danger' : 'warning')) + 
                             '">' + data.status + '</span>');
 
+                        // Show step progress for multi-step
+                        if (data.step_progress) {
+                            $('#detail-step-progress').text('Step ' + data.step_progress);
+                            $('#row-step-progress').show();
+                        } else {
+                            $('#row-step-progress').hide();
+                        }
+
                         // Show approved/rejected at & by
                         var statusLower = (data.status || '').toLowerCase();
                         if (statusLower === 'approved' || statusLower === 'rejected') {
@@ -276,8 +284,33 @@
                         } else {
                             $('#row-status-at').hide();
                             $('#row-status-by').hide();
-                            $('#btn-approve-modal, #btn-reject-modal').show();
+                            $('#row-status-from').hide();
+                            if (data.can_act) {
+                                $('#btn-approve-modal, #btn-reject-modal').show();
+                            } else {
+                                $('#btn-approve-modal, #btn-reject-modal').hide();
+                            }
                         }
+
+                        // Rejection notes row
+                        if (statusLower === 'rejected') {
+                            $('#detail-rejection-notes').text(data.rejection_notes || '-');
+                            $('#row-rejection-notes').show();
+                        } else {
+                            $('#row-rejection-notes').hide();
+                        }
+
+                        // Last edited by/at row
+                        if (data.edited_by_name) {
+                            $('#detail-edited-by').text(data.edited_by_name);
+                            $('#detail-edited-at').text(data.edited_at || '-');
+                            $('#row-edited-by').show();
+                            $('#row-edited-at').show();
+                        } else {
+                            $('#row-edited-by').hide();
+                            $('#row-edited-at').hide();
+                        }
+
                         $('#detail-alasan').text(data.alasan || '-');
                         
                         // Check-in Details
@@ -331,7 +364,7 @@
             });
         }
 
-        // Approve piket
+        // Approve Piket
         function approvePiket(id) {
             Swal.fire({
                 title: 'Approve Piket?',
@@ -370,7 +403,7 @@
             });
         }
 
-        // Reject piket
+        // Reject Piket
         function rejectPiket(id) {
             Swal.fire({
                 title: 'Reject Piket',

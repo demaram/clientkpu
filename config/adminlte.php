@@ -347,6 +347,12 @@ return [
             'icon' => 'fas fa-fw fa-file-invoice',
             'key'  => 'rekap-lembur',
         ],
+        [
+            'text' => 'Rekap Piket',
+            'url'  => 'admin/rekap-piket',
+            'icon' => 'fas fa-fw fa-file-invoice',
+            'key'  => 'rekap-piket',
+        ],
     ],
 
     /*

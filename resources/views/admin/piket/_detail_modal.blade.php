@@ -80,6 +80,22 @@
                                         <th id="label-status-from">-</th>
                                         <td id="detail-status-from">-</td>
                                     </tr>
+                                    <tr id="row-rejection-notes" style="display:none;">
+                                        <th>Alasan Penolakan</th>
+                                        <td id="detail-rejection-notes" class="text-danger">-</td>
+                                    </tr>
+                                    <tr id="row-step-progress" style="display:none;">
+                                        <th>Progres Step</th>
+                                        <td id="detail-step-progress">-</td>
+                                    </tr>
+                                    <tr id="row-edited-by" style="display:none;">
+                                        <th>Terakhir Diedit Oleh</th>
+                                        <td id="detail-edited-by">-</td>
+                                    </tr>
+                                    <tr id="row-edited-at" style="display:none;">
+                                        <th>Waktu Edit</th>
+                                        <td id="detail-edited-at">-</td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
