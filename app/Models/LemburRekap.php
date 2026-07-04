@@ -10,6 +10,7 @@ class LemburRekap extends Model
 
     protected $fillable = [
         'client_id',
+        'type',
         'recap_user_id',
         'period_start',
         'period_end',

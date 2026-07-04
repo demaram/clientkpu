@@ -29,6 +29,8 @@ class LemburKaryawan extends Model
         'status_at',
         'status_by',
         'status_from',
+        'edited_by',
+        'edited_at',
         'approval_config_id',
         'current_approval_step',
     ];
@@ -46,6 +48,11 @@ class LemburKaryawan extends Model
     public function statusBy()
     {
           return $this->belongsTo('App\Models\User','status_by');
+    }
+
+    public function editedBy()
+    {
+          return $this->belongsTo('App\Models\User','edited_by');
     }
 
     public function client()

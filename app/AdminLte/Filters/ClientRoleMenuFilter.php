@@ -19,8 +19,8 @@ class ClientRoleMenuFilter implements FilterInterface
      * Control menu item visibility based on whether the logged-in user is a
      * recap user on any lembur_approval_configs:
      *
-     * - recap users  : see Rekap Lembur; Lembur / Piket / SPPD are hidden
-     * - approver users: see Lembur / Piket / SPPD; Rekap Lembur is hidden
+     * - recap users  : see Rekap Lembur / Rekap Piket; Lembur / Piket / SPPD are hidden
+     * - approver users: see Lembur / Piket / SPPD; Rekap Lembur / Rekap Piket are hidden
      *
      * @param  array  $item  AdminLTE menu item array
      * @return array         Modified menu item (may include 'restricted' => true)
@@ -29,13 +29,13 @@ class ClientRoleMenuFilter implements FilterInterface
     {
         $key = $item['key'] ?? '';
 
-        if (!in_array($key, ['rekap-lembur', 'menu-lembur', 'menu-piket', 'menu-sppd'], true)) {
+        if (!in_array($key, ['rekap-lembur', 'rekap-piket', 'menu-lembur', 'menu-piket', 'menu-sppd'], true)) {
             return $item;
         }
 
         $recap = $this->checkIsRecapUser();
 
-        if ($key === 'rekap-lembur' && !$recap) {
+        if (in_array($key, ['rekap-lembur', 'rekap-piket'], true) && !$recap) {
             $item['restricted'] = true;
         }
 

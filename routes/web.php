@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LemburController;
 use App\Http\Controllers\Admin\LemburRekapController;
 use App\Http\Controllers\Admin\PiketController;
+use App\Http\Controllers\Admin\PiketRekapController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SppdController;
@@ -39,6 +40,8 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
 
     Route::prefix('piket')->group(function () {
         Route::get('/', [PiketController::class, 'index'])->name('admin.piket.index');
+        Route::get('/{id}/edit', [PiketController::class, 'edit'])->name('admin.piket.edit');
+        Route::put('/{id}', [PiketController::class, 'update'])->name('admin.piket.update');
         Route::get('/{id}', [PiketController::class, 'show'])->name('admin.piket.show');
         Route::post('/{id}/approve', [PiketController::class, 'approve'])->name('admin.piket.approve');
         Route::post('/{id}/reject', [PiketController::class, 'reject'])->name('admin.piket.reject');
@@ -51,6 +54,15 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
         Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
         Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
+    });
+
+    // Rekap Piket
+    Route::prefix('rekap-piket')->name('admin.rekap-piket.')->group(function () {
+        Route::get('/',       [PiketRekapController::class, 'index'])->name('index');
+        Route::get('/form',   [PiketRekapController::class, 'form'])->name('form');
+        Route::post('/approve', [PiketRekapController::class, 'approve'])->name('approve');
+        Route::post('/reject',  [PiketRekapController::class, 'reject'])->name('reject');
+        Route::get('/{id}/detail', [PiketRekapController::class, 'detail'])->name('detail');
     });
 
     // SPPD Routes
