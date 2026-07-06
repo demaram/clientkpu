@@ -21,6 +21,14 @@ class Sppd extends Model
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function approvalConfig()
     {
         return $this->belongsTo(SppdApprovalConfig::class, 'approval_config_id');

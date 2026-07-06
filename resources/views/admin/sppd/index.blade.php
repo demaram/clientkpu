@@ -72,6 +72,7 @@
                 <thead>
                     <tr>
                         <th width="5%">#</th>
+                        <th>Client</th>
                         <th>Nama Karyawan</th>
                         <th>Emp ID</th>
                         <th>Kode</th>
@@ -161,6 +162,7 @@ $(document).ready(function () {
         },
         columns: [
             { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+            { data: 'client_nama', name: 'client_nama', orderable: false, searchable: false },
             { data: 'karyawan', name: 'karyawan' },
             { data: 'empid', name: 'empid' },
             { data: 'kode', name: 'kode' },
