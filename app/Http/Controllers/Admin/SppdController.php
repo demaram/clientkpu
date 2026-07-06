@@ -52,8 +52,8 @@ class SppdController extends Controller
      */
     public function show(int $id)
     {
-        $user     = Auth::user();
-        $clientId = $user?->id_client;
+        $user      = Auth::user();
+        $clientIds = $user?->accessibleClientIds() ?? [];
 
         $sppd = Sppd::with([
             'karyawan',
@@ -63,7 +63,7 @@ class SppdController extends Controller
             'approvalLogs',
         ])->findOrFail($id);
 
-        if ($clientId && $sppd->client_id != $clientId) {
+        if ($clientIds && !in_array($sppd->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -154,12 +154,12 @@ class SppdController extends Controller
      */
     public function approve(int $id)
     {
-        $user     = Auth::user();
-        $clientId = $user?->id_client;
+        $user      = Auth::user();
+        $clientIds = $user?->accessibleClientIds() ?? [];
 
         $sppd = Sppd::with('approvalConfig.steps')->findOrFail($id);
 
-        if ($clientId && $sppd->client_id != $clientId) {
+        if ($clientIds && !in_array($sppd->client_id, $clientIds)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
         }
 
@@ -194,12 +194,12 @@ class SppdController extends Controller
     {
         $request->validate(['notes' => 'required|string|max:500']);
 
-        $user     = Auth::user();
-        $clientId = $user?->id_client;
+        $user      = Auth::user();
+        $clientIds = $user?->accessibleClientIds() ?? [];
 
         $sppd = Sppd::with('approvalConfig.steps')->findOrFail($id);
 
-        if ($clientId && $sppd->client_id != $clientId) {
+        if ($clientIds && !in_array($sppd->client_id, $clientIds)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
         }
 

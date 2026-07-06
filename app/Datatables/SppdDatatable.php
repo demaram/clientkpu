@@ -19,8 +19,8 @@ class SppdDatatable
      */
     public function render(Request $request)
     {
-        $user     = User::find(Auth::id());
-        $clientId = $user?->id_client ?? null;
+        $user      = User::find(Auth::id());
+        $clientIds = $user?->accessibleClientIds() ?? [];
 
         $namaFilter   = trim((string) $request->get('nama_filter', ''));
         $statusFilter = (string) $request->get('status_filter', '');
@@ -28,8 +28,8 @@ class SppdDatatable
         $endDate      = $request->get('end_date');
 
         $query = Sppd::query()
-            ->with(['karyawan', 'approvalConfig.steps'])
-            ->when($clientId, fn ($q) => $q->where('client_id', $clientId))
+            ->with(['karyawan', 'client', 'approvalConfig.steps'])
+            ->when($clientIds, fn ($q) => $q->whereIn('client_id', $clientIds))
             ->when($namaFilter !== '', function ($q) use ($namaFilter) {
                 $q->whereHas('karyawan', function ($uq) use ($namaFilter) {
                     $uq->whereRaw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')) LIKE ?", ['%' . $namaFilter . '%']);
@@ -47,6 +47,9 @@ class SppdDatatable
             })
             ->addColumn('empid', function (Sppd $row) {
                 return $row->karyawan?->empid ?? '-';
+            })
+            ->addColumn('client_nama', function (Sppd $row) {
+                return $row->client->nama ?? '-';
             })
             ->addColumn('kode', function (Sppd $row) {
                 return '<b>' . e($row->kode) . '</b>';
