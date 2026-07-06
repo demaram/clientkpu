@@ -26,14 +26,14 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $user     = Auth::user();
-        $clientId = $user?->id_client;
+        $user      = Auth::user();
+        $clientIds = $user?->accessibleClientIds() ?? [];
 
         // --- Lembur status counts (all users) ---
         $statusCounts = LemburKaryawan::query()
             ->where('type', 'lembur')
-            ->when($clientId, function ($query) use ($clientId) {
-                return $query->where('client_id', $clientId);
+            ->when($clientIds, function ($query) use ($clientIds) {
+                return $query->whereIn('client_id', $clientIds);
             })
             ->selectRaw("status, COUNT(*) as total")
             ->groupBy('status')
@@ -50,7 +50,7 @@ class DashboardController extends Controller
         $isRecapUser = (bool) Session::get('is_recap_user', false);
         $chartData   = null;
 
-        if ($isRecapUser && $clientId) {
+        if ($isRecapUser && $clientIds) {
             $start = now()->subMonths(11)->startOfMonth();
             $end   = now()->endOfMonth();
 
@@ -61,7 +61,7 @@ class DashboardController extends Controller
             }
 
             // Aggregate approved rekap totals per calendar month
-            $rekapByMonth = LemburRekap::where('client_id', $clientId)
+            $rekapByMonth = LemburRekap::whereIn('client_id', $clientIds)
                 ->where('status', 'approved')
                 ->whereBetween('period_start', [$start, $end])
                 ->selectRaw("DATE_FORMAT(period_start, '%Y-%m') as month, SUM(total_pay) as total_pay")
@@ -82,8 +82,8 @@ class DashboardController extends Controller
 
         // --- SPPD pending count (waiting_approval with client-step active) ---
         $sppdPending = 0;
-        if ($clientId) {
-            $sppdPending = Sppd::where('client_id', $clientId)
+        if ($clientIds) {
+            $sppdPending = Sppd::whereIn('client_id', $clientIds)
                 ->where('status', 'waiting_approval')
                 ->whereHas('approvalConfig.steps', function ($q) {
                     $q->whereColumn('step_order', 'sppd.current_approval_step')

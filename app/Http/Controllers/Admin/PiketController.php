@@ -52,7 +52,8 @@ class PiketController extends Controller
 
         // Check if user has access to this Piket data
         $user = Auth::user()->load('areas');
-        if ($user->id_client && $piket->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -185,7 +186,8 @@ class PiketController extends Controller
         $piket = LemburKaryawan::with(['user', 'client'])->findOrFail($id);
 
         $user = Auth::user();
-        if ($user->id_client && $piket->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -240,7 +242,8 @@ class PiketController extends Controller
         $piket = LemburKaryawan::findOrFail($id);
 
         $user = Auth::user();
-        if ($user->id_client && $piket->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -315,7 +318,8 @@ class PiketController extends Controller
 
         // Check if user has access to this Piket data
         $user = Auth::user();
-        if ($user->id_client && $piket->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access'
@@ -374,7 +378,8 @@ class PiketController extends Controller
 
         // Check if user has access to this Piket data
         $user = Auth::user();
-        if ($user->id_client && $piket->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access'

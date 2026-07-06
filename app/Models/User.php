@@ -154,4 +154,26 @@ class User extends Authenticatable
     {
         return $this->belongsTo('App\Models\Client', 'id_client');
     }
+
+    /** Extra clients this user was granted access to, on top of their primary id_client. */
+    public function clientAccess()
+    {
+        return $this->hasMany(UserClientAccess::class, 'user_id');
+    }
+
+    /**
+     * All client_id values this user may access: their primary id_client plus any
+     * granted via user_client_access.
+     *
+     * @return array<int>
+     */
+    public function accessibleClientIds(): array
+    {
+        return collect([$this->id_client])
+            ->merge($this->clientAccess()->pluck('client_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
 }

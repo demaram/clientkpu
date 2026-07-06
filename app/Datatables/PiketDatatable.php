@@ -21,7 +21,7 @@ class PiketDatatable
 		}
 
 		$areaIds = $user->areas->pluck('id')->toArray();
-		$clientId = $user->id_client ?? null;
+		$clientIds = $user->accessibleClientIds();
 		$projectIds = Project::whereIn('master_area_id', $areaIds)->pluck('id')->toArray();
 
 		$namaKaryawan = trim((string) $request->get('nama_karyawan', ''));
@@ -56,8 +56,8 @@ class PiketDatatable
 
 		$query = LemburKaryawan::query()
 			->with(['user', 'client', 'approvalConfig.steps'])
-			->when($clientId, function ($query) use ($clientId) {
-				return $query->where('client_id', $clientId);
+			->when($clientIds, function ($query) use ($clientIds) {
+				return $query->whereIn('client_id', $clientIds);
 			})
 			->whereIn('project_id', $projectIds)
 			->where('type', 'piket')
@@ -84,6 +84,9 @@ class PiketDatatable
 			->addColumn('karyawan', function ($row) {
 				$user = $row->user;
 				return $user ? $user->first_name . ' ' . $user->last_name : '-';
+			})
+			->addColumn('client_nama', function ($row) {
+				return $row->client->nama ?? '-';
 			})
 			->addColumn('empid', function ($row) {
 				$user = $row->user;
