@@ -65,7 +65,8 @@ class LemburController extends Controller
 
         // Check if user has access to this lembur data
         $user = User::with('areas')->find(Auth::id());
-        if ($user->id_client && $lembur->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -224,7 +225,8 @@ class LemburController extends Controller
         $lembur = LemburKaryawan::with(['user', 'client'])->findOrFail($id);
 
         $user = Auth::user();
-        if ($user->id_client && $lembur->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -279,7 +281,8 @@ class LemburController extends Controller
         $lembur = LemburKaryawan::findOrFail($id);
 
         $user = Auth::user();
-        if ($user->id_client && $lembur->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
@@ -355,7 +358,8 @@ class LemburController extends Controller
 
         // Check if user has access to this lembur data
         $user = Auth::user();
-        if ($user->id_client && $lembur->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access'
@@ -413,7 +417,8 @@ class LemburController extends Controller
 
         // Check if user has access to this lembur data
         $user = Auth::user();
-        if ($user->id_client && $lembur->client_id != $user->id_client) {
+        $clientIds = $user->accessibleClientIds();
+        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access'

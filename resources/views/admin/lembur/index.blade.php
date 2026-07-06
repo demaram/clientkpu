@@ -73,6 +73,7 @@
                     <thead>
                         <tr>
                             <th width="5%">No</th>
+                            <th>Client</th>
                             <th>Nama Pegawai</th>
                             <th>EmpId</th>
                             <th>Kode</th>
@@ -196,6 +197,7 @@
                 },
                 columns: [
                     {data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false},
+                    {data: 'client_nama', name: 'client_nama', orderable: false, searchable: false},
                     {data: 'karyawan', name: 'karyawan'},
                     {data: 'empid', name: 'empid'},
                     {data: 'kode', name: 'kode'},
