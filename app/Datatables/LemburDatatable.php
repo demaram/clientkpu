@@ -162,6 +162,7 @@ class LemburDatatable
 
 				if ($row->status === 'waiting_approval') {
 					$canAct = true;
+					$currentStep = null;
 
 					// For multi-step approval, only show buttons when it's this user's turn
 					if ($row->approval_config_id && $row->approvalConfig) {
