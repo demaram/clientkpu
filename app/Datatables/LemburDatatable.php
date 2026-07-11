@@ -59,6 +59,9 @@ class LemburDatatable
 			->when($clientIds, function ($query) use ($clientIds) {
 				return $query->whereIn('client_id', $clientIds);
 			})
+			->where(function ($query) use ($user) {
+				$this->applyApprovalVisibility($query, $user);
+			})
 			->where('type', 'lembur')
 			->when($namaKaryawan !== '', function ($query) use ($namaKaryawan) {
 				$query->whereHas('user', function ($userQuery) use ($namaKaryawan) {
@@ -254,6 +257,28 @@ class LemburDatatable
 				'total_durasi_label' => $this->formatDurationFromMinutes((int) $totalDurasiMenit),
 			])
 			->make(true);
+	}
+
+	/**
+	 * Restrict the query to rows the client user is allowed to see.
+	 *
+	 * Unassigned Lembur (approval_config_id null) stays visible to any client user
+	 * with access to the client_id (old behaviour). Rows with an Assignment resolved
+	 * (approval_config_id set) are only visible to a client user who is one of the
+	 * approver steps in that specific config — not just the current step, any step.
+	 *
+	 * @see development/features/lembur/docs/adr/0001-lembur-approval-per-karyawan-assignment.md
+	 *
+	 * @param  \Illuminate\Database\Eloquent\Builder  $query
+	 * @param  User  $user
+	 * @return void
+	 */
+	private function applyApprovalVisibility($query, User $user): void
+	{
+		$query->whereNull('approval_config_id')
+			->orWhereHas('approvalConfig.steps', function ($stepQuery) use ($user) {
+				$stepQuery->where('approver_user_id', $user->id);
+			});
 	}
 
 	private function formatDurationFromMinutes(int $minutes): string
