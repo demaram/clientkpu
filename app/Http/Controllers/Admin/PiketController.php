@@ -57,16 +57,19 @@ class PiketController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        // Same visibility rule as PiketDatatable: an assigned piket (approval_config_id
-        // set) is only viewable by a client user who is one of the approver steps in that
-        // config, so this JSON endpoint can't be used to bypass the list's row filtering.
-        if ($piket->approval_config_id) {
-            $isApproverInConfig = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $piket->approval_config_id)
-                ->where('approver_user_id', Auth::id())
-                ->exists();
-            if (!$isApproverInConfig) {
-                abort(403, 'Unauthorized access');
-            }
+        // Same visibility rule as PiketDatatable: Unassigned piket (no active
+        // Assignment) is not viewable at all, and an assigned piket is only viewable
+        // by a client user who is one of the approver steps in that config — so this
+        // JSON endpoint can't be used to bypass the list's row filtering.
+        if (!$piket->approval_config_id) {
+            abort(403, 'Unauthorized access');
+        }
+
+        $isApproverInConfig = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $piket->approval_config_id)
+            ->where('approver_user_id', Auth::id())
+            ->exists();
+        if (!$isApproverInConfig) {
+            abort(403, 'Unauthorized access');
         }
 
         // Generate photo URLs using custom_public disk
@@ -345,16 +348,23 @@ class PiketController extends Controller
             ]);
         }
 
-        // Step-aware validation: check if it's this user's turn
-        if ($piket->approval_config_id) {
-            $step = $this->workflow->getActiveStep($piket);
+        // Unassigned piket (no active Assignment) has no defined approver — block
+        // rather than silently allowing any client user with access to act on it.
+        if (!$piket->approval_config_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Piket ini tidak menggunakan konfigurasi approval bertahap'
+            ], 403);
+        }
 
-            if ($step && $step->approver_user_id != Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bukan giliran Anda untuk approve piket ini'
-                ], 403);
-            }
+        // Step-aware validation: check if it's this user's turn
+        $step = $this->workflow->getActiveStep($piket);
+
+        if ($step && $step->approver_user_id != Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukan giliran Anda untuk approve piket ini'
+            ], 403);
         }
 
         $result = $this->workflow->proxyApprove('piket', $id, Auth::id());
@@ -405,16 +415,23 @@ class PiketController extends Controller
             ]);
         }
 
-        // Step-aware validation
-        if ($piket->approval_config_id) {
-            $step = $this->workflow->getActiveStep($piket);
+        // Unassigned piket (no active Assignment) has no defined approver — block
+        // rather than silently allowing any client user with access to act on it.
+        if (!$piket->approval_config_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Piket ini tidak menggunakan konfigurasi approval bertahap'
+            ], 403);
+        }
 
-            if ($step && $step->approver_user_id != Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bukan giliran Anda untuk reject piket ini'
-                ], 403);
-            }
+        // Step-aware validation
+        $step = $this->workflow->getActiveStep($piket);
+
+        if ($step && $step->approver_user_id != Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukan giliran Anda untuk reject piket ini'
+            ], 403);
         }
 
         $result = $this->workflow->proxyReject('piket', $id, Auth::id(), $request->input('notes'));

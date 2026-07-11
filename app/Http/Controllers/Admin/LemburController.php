@@ -70,16 +70,19 @@ class LemburController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        // Same visibility rule as LemburDatatable: an assigned lembur (approval_config_id
-        // set) is only viewable by a client user who is one of the approver steps in that
-        // config, so this JSON endpoint can't be used to bypass the list's row filtering.
-        if ($lembur->approval_config_id) {
-            $isApproverInConfig = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-                ->where('approver_user_id', Auth::id())
-                ->exists();
-            if (!$isApproverInConfig) {
-                abort(403, 'Unauthorized access');
-            }
+        // Same visibility rule as LemburDatatable: Unassigned lembur (no active
+        // Assignment) is not viewable at all, and an assigned lembur is only viewable
+        // by a client user who is one of the approver steps in that config — so this
+        // JSON endpoint can't be used to bypass the list's row filtering.
+        if (!$lembur->approval_config_id) {
+            abort(403, 'Unauthorized access');
+        }
+
+        $isApproverInConfig = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+            ->where('approver_user_id', Auth::id())
+            ->exists();
+        if (!$isApproverInConfig) {
+            abort(403, 'Unauthorized access');
         }
 
         // Generate photo URLs using custom_public disk
@@ -385,16 +388,23 @@ class LemburController extends Controller
             ]);
         }
 
-        // Step-aware validation: check if it's this user's turn
-        if ($lembur->approval_config_id) {
-            $step = $this->workflow->getActiveStep($lembur);
+        // Unassigned lembur (no active Assignment) has no defined approver — block
+        // rather than silently allowing any client user with access to act on it.
+        if (!$lembur->approval_config_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lembur ini tidak menggunakan konfigurasi approval bertahap'
+            ], 403);
+        }
 
-            if ($step && $step->approver_user_id != Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bukan giliran Anda untuk approve lembur ini'
-                ], 403);
-            }
+        // Step-aware validation: check if it's this user's turn
+        $step = $this->workflow->getActiveStep($lembur);
+
+        if ($step && $step->approver_user_id != Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukan giliran Anda untuk approve lembur ini'
+            ], 403);
         }
 
         $result = $this->workflow->proxyApprove('lembur', $id, Auth::id());
@@ -444,16 +454,23 @@ class LemburController extends Controller
             ]);
         }
 
-        // Step-aware validation
-        if ($lembur->approval_config_id) {
-            $step = $this->workflow->getActiveStep($lembur);
+        // Unassigned lembur (no active Assignment) has no defined approver — block
+        // rather than silently allowing any client user with access to act on it.
+        if (!$lembur->approval_config_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lembur ini tidak menggunakan konfigurasi approval bertahap'
+            ], 403);
+        }
 
-            if ($step && $step->approver_user_id != Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bukan giliran Anda untuk reject lembur ini'
-                ], 403);
-            }
+        // Step-aware validation
+        $step = $this->workflow->getActiveStep($lembur);
+
+        if ($step && $step->approver_user_id != Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukan giliran Anda untuk reject lembur ini'
+            ], 403);
         }
 
         $result = $this->workflow->proxyReject('lembur', $id, Auth::id(), $request->input('notes'));

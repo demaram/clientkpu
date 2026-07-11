@@ -260,10 +260,10 @@ class PiketDatatable
 	/**
 	 * Restrict the query to rows the client user is allowed to see.
 	 *
-	 * Same rule as LemburDatatable — Unassigned Piket (approval_config_id null) stays
-	 * visible to any client user with access to the client_id; rows with an Assignment
-	 * resolved are only visible to a client user who is one of the approver steps in
-	 * that config (any step, not just the current one).
+	 * Same rule as LemburDatatable — Unassigned Piket (approval_config_id null —
+	 * karyawan belum punya Assignment aktif) is excluded entirely. A row is only
+	 * visible to a client user who is one of the approver steps in its resolved
+	 * config (any step, not just the current one).
 	 *
 	 * @see development/features/lembur/docs/adr/0001-lembur-approval-per-karyawan-assignment.md
 	 *
@@ -273,8 +273,8 @@ class PiketDatatable
 	 */
 	private function applyApprovalVisibility($query, User $user): void
 	{
-		$query->whereNull('approval_config_id')
-			->orWhereHas('approvalConfig.steps', function ($stepQuery) use ($user) {
+		$query->whereNotNull('approval_config_id')
+			->whereHas('approvalConfig.steps', function ($stepQuery) use ($user) {
 				$stepQuery->where('approver_user_id', $user->id);
 			});
 	}
