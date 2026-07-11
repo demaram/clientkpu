@@ -55,7 +55,7 @@ class PiketDatatable
 		}
 
 		$query = LemburKaryawan::query()
-			->with(['user', 'client', 'approvalConfig.steps'])
+			->with(['user', 'client', 'history:id,jabatan', 'approvalConfig.steps'])
 			->when($clientIds, function ($query) use ($clientIds) {
 				return $query->whereIn('client_id', $clientIds);
 			})
@@ -94,6 +94,9 @@ class PiketDatatable
 			->addColumn('empid', function ($row) {
 				$user = $row->user;
 				return $user ? $user->empid : '-';
+			})
+			->addColumn('pekerjaan', function ($row) {
+				return $row->history->jabatan ?? '-';
 			})
 			->addColumn('kode', function ($row) {
 				return '<b>' . $row->kode . '</b>' ?? '-';
@@ -213,6 +216,9 @@ class PiketDatatable
 							break;
 						case 'empid':
 							$query->orderByRaw("(SELECT empid FROM users WHERE users.id = lembur_karyawan_project.user_id LIMIT 1) {$direction}");
+							break;
+						case 'pekerjaan':
+							$query->orderByRaw("(SELECT jabatan FROM karyawan_project WHERE karyawan_project.id = lembur_karyawan_project.karyawan_project_id LIMIT 1) {$direction}");
 							break;
 						case 'kode':
 							$query->orderBy('kode', $direction);

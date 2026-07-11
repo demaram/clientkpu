@@ -76,6 +76,7 @@
                             <th>Client</th>
                             <th>Nama Pegawai</th>
                             <th>EmpId</th>
+                            <th>Pekerjaan</th>
                             <th>Kode</th>
                             <th>Tanggal</th>
                             <th>Waktu</th>
@@ -192,6 +193,7 @@
                     {data: 'client_nama', name: 'client_nama', orderable: false, searchable: false},
                     {data: 'karyawan', name: 'karyawan'},
                     {data: 'empid', name: 'empid'},
+                    {data: 'pekerjaan', name: 'pekerjaan'},
                     {data: 'kode', name: 'kode'},
                     {data: 'tanggal', name: 'tanggal'},
                     {data: 'waktu', name: 'waktu'},
