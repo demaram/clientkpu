@@ -60,6 +60,9 @@ class PiketDatatable
 				return $query->whereIn('client_id', $clientIds);
 			})
 			->whereIn('project_id', $projectIds)
+			->where(function ($query) use ($user) {
+				$this->applyApprovalVisibility($query, $user);
+			})
 			->where('type', 'piket')
 			->when($namaKaryawan !== '', function ($query) use ($namaKaryawan) {
 				$query->whereHas('user', function ($userQuery) use ($namaKaryawan) {
@@ -246,5 +249,27 @@ class PiketDatatable
 			})
 			->rawColumns(['status_badge', 'action', 'kode'])
 			->make(true);
+	}
+
+	/**
+	 * Restrict the query to rows the client user is allowed to see.
+	 *
+	 * Same rule as LemburDatatable — Unassigned Piket (approval_config_id null) stays
+	 * visible to any client user with access to the client_id; rows with an Assignment
+	 * resolved are only visible to a client user who is one of the approver steps in
+	 * that config (any step, not just the current one).
+	 *
+	 * @see development/features/lembur/docs/adr/0001-lembur-approval-per-karyawan-assignment.md
+	 *
+	 * @param  \Illuminate\Database\Eloquent\Builder  $query
+	 * @param  User  $user
+	 * @return void
+	 */
+	private function applyApprovalVisibility($query, User $user): void
+	{
+		$query->whereNull('approval_config_id')
+			->orWhereHas('approvalConfig.steps', function ($stepQuery) use ($user) {
+				$stepQuery->where('approver_user_id', $user->id);
+			});
 	}
 }

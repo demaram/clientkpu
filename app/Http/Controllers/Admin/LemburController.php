@@ -70,6 +70,18 @@ class LemburController extends Controller
             abort(403, 'Unauthorized access');
         }
 
+        // Same visibility rule as LemburDatatable: an assigned lembur (approval_config_id
+        // set) is only viewable by a client user who is one of the approver steps in that
+        // config, so this JSON endpoint can't be used to bypass the list's row filtering.
+        if ($lembur->approval_config_id) {
+            $isApproverInConfig = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
+                ->where('approver_user_id', Auth::id())
+                ->exists();
+            if (!$isApproverInConfig) {
+                abort(403, 'Unauthorized access');
+            }
+        }
+
         // Generate photo URLs using custom_public disk
         $startPhotoUrl = null;
         if ($lembur->start_photo) {
