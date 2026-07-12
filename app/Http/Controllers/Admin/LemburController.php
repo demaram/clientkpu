@@ -5,26 +5,27 @@ namespace App\Http\Controllers\Admin;
 use App\Datatables\LemburDatatable;
 use App\Http\Controllers\Controller;
 use App\Models\LemburApprovalConfig;
-use App\Models\LemburApprovalConfigStep;
 use App\Models\LemburKaryawan;
-use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
+use App\Services\LemburKaryawanDetailService;
 use App\Services\LemburKaryawanWorkflowService;
 
 class LemburController extends Controller
 {
     protected LemburKaryawanWorkflowService $workflow;
+    protected LemburKaryawanDetailService $detailService;
 
     /**
      * @param  LemburKaryawanWorkflowService  $workflow
+     * @param  LemburKaryawanDetailService    $detailService
      */
-    public function __construct(LemburKaryawanWorkflowService $workflow)
+    public function __construct(LemburKaryawanWorkflowService $workflow, LemburKaryawanDetailService $detailService)
     {
         $this->workflow = $workflow;
+        $this->detailService = $detailService;
     }
 
     /**
@@ -60,166 +61,11 @@ class LemburController extends Controller
      */
     public function show($id)
     {
-        $lembur = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy', 'editedBy', 'approvalLogs'])
-            ->findOrFail($id);
-
-        // Check if user has access to this lembur data
-        $user = User::with('areas')->find(Auth::id());
-        $clientIds = $user->accessibleClientIds();
-        if ($clientIds && !in_array($lembur->client_id, $clientIds)) {
-            abort(403, 'Unauthorized access');
-        }
-
-        // Same visibility rule as LemburDatatable: Unassigned lembur (no active
-        // Assignment) is not viewable at all, and an assigned lembur is only viewable
-        // by a client user who is one of the approver steps in that config — so this
-        // JSON endpoint can't be used to bypass the list's row filtering.
-        if (!$lembur->approval_config_id) {
-            abort(403, 'Unauthorized access');
-        }
-
-        $isApproverInConfig = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-            ->where('approver_user_id', Auth::id())
-            ->exists();
-        if (!$isApproverInConfig) {
-            abort(403, 'Unauthorized access');
-        }
-
-        // Generate photo URLs using custom_public disk
-        $startPhotoUrl = null;
-        if ($lembur->start_photo) {
-            if (Storage::disk('custom_public')->exists($lembur->start_photo)) {
-                $startPhotoUrl = Storage::disk('custom_public')->url($lembur->start_photo);
-            }
-        }
-
-        $endPhotoUrl = null;
-        if ($lembur->end_photo) {
-            if (Storage::disk('custom_public')->exists($lembur->end_photo)) {
-                $endPhotoUrl = Storage::disk('custom_public')->url($lembur->end_photo);
-            }
-        }
-
-        // Calculate duration
-        $durasi = '-';
-        if ($lembur->start && $lembur->end) {
-            $startTime = strtotime($lembur->start);
-            $endTime = strtotime($lembur->end);
-            $durasiDetik = $endTime - $startTime;
-            
-            $hours = floor($durasiDetik / 3600);
-            $minutes = floor(($durasiDetik % 3600) / 60);
-            
-            $durasi = $hours . ' jam ' . $minutes . ' menit';
-        }
-
-        // Get employee details
-        $karyawan = $lembur->user;
-        $empId = $karyawan->emp_id ?? '-';
-        $jabatan = $karyawan->jabatan ?? '-';
-        $nomorRekening = $karyawan->no_rekening ?? '-';
-
-        // Live lembur statistics (approved only)
-        $lemburDate = Carbon::parse($lembur->start);
-
-        $monthlyCountedHours = (float) LemburKaryawan::where('user_id', $lembur->user_id)
-            ->where('status', 'approved')
-            ->whereRaw('YEAR(start) = ? AND MONTH(start) = ?', [$lemburDate->year, $lemburDate->month])
-            ->sum('counted_hours');
-
-        $weeklyCountedHours = (float) LemburKaryawan::where('user_id', $lembur->user_id)
-            ->where('status', 'approved')
-            ->whereRaw('YEARWEEK(start, 1) = YEARWEEK(?, 1)', [$lemburDate->format('Y-m-d')])
-            ->sum('counted_hours');
-
-        $formatHours = function (float $hours): string {
-            $totalMinutes = (int) round($hours * 60);
-            $h = intdiv($totalMinutes, 60);
-            $m = $totalMinutes % 60;
-            return $h . ' jam ' . $m . ' menit';
-        };
-
-        // Step progress info
-        $stepProgress = null;
-        if ($lembur->approval_config_id) {
-            $totalStepsCount = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)->count();
-            $stepProgress = $lembur->current_approval_step . '/' . $totalStepsCount;
-        }
-
-        // Most recent rejection log
-        $rejectionLog = $lembur->approvalLogs->where('status', 'rejected')->sortByDesc('step_order')->first();
-
-        // Determine if current user can act on this lembur
-        $canAct = false;
-        $step   = null;
-        if ($lembur->status === 'waiting_approval') {
-            if ($lembur->approval_config_id) {
-                $step   = LemburApprovalConfigStep::where('lembur_approval_config_id', $lembur->approval_config_id)
-                    ->where('step_order', $lembur->current_approval_step)
-                    ->first();
-                $canAct = $step && $step->approver_user_id == Auth::id();
-            } else {
-                $canAct = true;
-            }
-        }
-
-        $canEdit = $canAct && $lembur->approval_config_id && $step && $step->can_edit_data;
+        $data = $this->detailService->getDetail((int) $id, Auth::user());
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id'                => $lembur->id,
-                'client'            => $lembur->client->nama ?? '-',
-                'karyawan'          => $karyawan ? $karyawan->first_name . ' ' . $karyawan->last_name : '-',
-                'empid'             => $empId,
-                'jabatan'           => $jabatan,
-                'rekening'          => $nomorRekening,
-                'type'              => ucfirst($lembur->type),
-                'tanggal'           => date('d/m/Y', strtotime($lembur->start)),
-                'start_time'        => date('H:i', strtotime($lembur->start)),
-                'end_time'          => $lembur->end ? date('H:i', strtotime($lembur->end)) : '-',
-                'durasi'            => $durasi,
-                'overtime_pay'      => $lembur->overtime_pay ? 'Rp ' . number_format($lembur->overtime_pay, 0, ',', '.') : '-',
-                'status'            => ucfirst($lembur->status),
-                'status_at'         => in_array($lembur->status, ['approved', 'rejected']) && $lembur->status_at
-                    ? date('d/m/Y H:i', strtotime($lembur->status_at))
-                    : null,
-                'status_by_name'    => in_array($lembur->status, ['approved', 'rejected']) && $lembur->statusBy
-                    ? $lembur->statusBy->name
-                    : null,
-                'status_from'      => in_array($lembur->status, ['approved', 'rejected']) && $lembur->status_from
-                    ? ucfirst($lembur->status_from)
-                    : null,
-                'edited_by_name'    => $lembur->edited_by && $lembur->editedBy
-                    ? $lembur->editedBy->name
-                    : null,
-                'edited_at'         => $lembur->edited_at
-                    ? date('d/m/Y H:i', strtotime($lembur->edited_at))
-                    : null,
-                'alasan'            => $lembur->alasan ?? '-',
-                'start_photo'       => $startPhotoUrl,
-                'end_photo'         => $endPhotoUrl,
-                'check_in_location' => $lembur->checkInLocation ? [
-                    'latitude'  => $lembur->checkInLocation->latitude,
-                    'longitude' => $lembur->checkInLocation->longitude,
-                    'address'   => $lembur->checkInLocation->address,
-                ] : null,
-                'check_out_location' => $lembur->checkOutLocation ? [
-                    'latitude'  => $lembur->checkOutLocation->latitude,
-                    'longitude' => $lembur->checkOutLocation->longitude,
-                    'address'   => $lembur->checkOutLocation->address,
-                ] : null,
-                'monthly_counted_hours' => $formatHours($monthlyCountedHours),
-                'weekly_counted_hours'  => $formatHours($weeklyCountedHours),
-                'monthly_period'        => $lemburDate->translatedFormat('F Y'),
-                'weekly_period'         => 'Minggu ke-' . $lemburDate->weekOfYear . ' ' . $lemburDate->year,
-                'step_progress'         => $stepProgress,
-                'can_act'               => $canAct,
-                'can_edit'              => $canEdit,
-                'rejection_notes'       => $lembur->status === 'rejected'
-                    ? ($rejectionLog ? ($rejectionLog->notes ?? '-') : '-')
-                    : null,
-            ]
+            'data'    => $data,
         ]);
     }
 
