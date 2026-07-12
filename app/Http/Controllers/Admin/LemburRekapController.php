@@ -19,6 +19,12 @@ use Illuminate\Support\Facades\Auth;
  * previously a single recap silently mixed lembur and piket totals together.
  * Both the view folder and route name follow the same "rekap-{type}" naming,
  * so they're derived from $type rather than hardcoded.
+ *
+ * A client can also split recap duty across several recap users (different
+ * lembur_approval_configs naming different recap_user_id) — lembur_rekap rows are
+ * further scoped by recap_user_id (uq_client_period_type_recap_user) so each recap
+ * user gets their own row per (client, period, type) instead of overwriting each
+ * other's totals.
  */
 class LemburRekapController extends Controller
 {
@@ -38,19 +44,25 @@ class LemburRekapController extends Controller
 
     /**
      * Abort with 403 if the logged-in user is not a recap_user_id on any config.
-     * Returns the matching config so callers can read client_id without a second query.
      *
-     * @return LemburApprovalConfig
+     * A client can have several active configs, and different configs can name
+     * different recap_user_id — so this returns every config owned by the logged-in
+     * user, not just one. Callers use it both for client_id and to scope
+     * LemburKaryawan queries to approval_config_id IN (owned config ids), so a
+     * recap user only ever sees TAD covered by their own config(s) — never
+     * Unassigned records or records under a config owned by someone else.
+     *
+     * @return \Illuminate\Support\Collection<int, LemburApprovalConfig>
      */
-    private function ensureRecapAccess(): LemburApprovalConfig
+    private function ensureRecapAccess(): \Illuminate\Support\Collection
     {
-        $config = LemburApprovalConfig::where('recap_user_id', Auth::id())->first();
+        $configs = LemburApprovalConfig::where('recap_user_id', Auth::id())->get(['id', 'client_id']);
 
-        if (!$config) {
+        if ($configs->isEmpty()) {
             abort(403, "Anda tidak memiliki akses rekap {$this->type}");
         }
 
-        return $config;
+        return $configs;
     }
 
     /**
@@ -63,11 +75,12 @@ class LemburRekapController extends Controller
      */
     public function index()
     {
-        $config   = $this->ensureRecapAccess();
-        $clientId = $config->client_id;
+        $configs  = $this->ensureRecapAccess();
+        $clientId = $configs->first()->client_id;
 
         $rekaps = LemburRekap::where('client_id', $clientId)
             ->where('type', $this->type)
+            ->where('recap_user_id', Auth::id())
             ->orderByDesc('period_start')
             ->get();
 
@@ -79,7 +92,7 @@ class LemburRekapController extends Controller
             ->values()
             ->toArray();
 
-        return view($this->prefix() . '.index', compact('rekaps', 'approvedMonths', 'config'))
+        return view($this->prefix() . '.index', compact('rekaps', 'approvedMonths', 'configs'))
             ->with('clientId', $clientId);
     }
 
@@ -91,8 +104,9 @@ class LemburRekapController extends Controller
      */
     public function form(Request $request)
     {
-        $config   = $this->ensureRecapAccess();
-        $clientId = $config->client_id;
+        $configs   = $this->ensureRecapAccess();
+        $clientId  = $configs->first()->client_id;
+        $configIds = $configs->pluck('id');
 
         $month = $request->input('month', Carbon::now()->format('Y-m'));
 
@@ -109,21 +123,24 @@ class LemburRekapController extends Controller
             ->where('client_id', $clientId)
             ->where('type', $this->type)
             ->where('status', 'approved')
+            ->whereIn('approval_config_id', $configIds)
             ->whereBetween('start', [$periodStart->format('Y-m-d 00:00:00'), $periodEnd->format('Y-m-d 23:59:59')])
             ->orderBy('start')
             ->get();
 
         $totalPay = $lemburs->sum('overtime_pay');
 
-        // Check existing rekap for this period
+        // Check existing rekap for this period (scoped to this recap user — a client can
+        // split recap duty across several recap users, each with their own row)
         $existingRekap = LemburRekap::where('client_id', $clientId)
             ->where('type', $this->type)
             ->where('period_start', $periodStart->toDateString())
+            ->where('recap_user_id', Auth::id())
             ->first();
 
         return view($this->prefix() . '.form', compact(
             'lemburs', 'totalPay', 'month', 'periodStart', 'periodEnd',
-            'existingRekap', 'config'
+            'existingRekap', 'configs'
         ));
     }
 
@@ -136,13 +153,16 @@ class LemburRekapController extends Controller
      */
     public function detail(int $id)
     {
-        $config   = $this->ensureRecapAccess();
-        $clientId = $config->client_id;
+        $configs  = $this->ensureRecapAccess();
+        $clientId = $configs->first()->client_id;
 
-        // Scope to this client + type to prevent cross-client/cross-type ID enumeration
+        // Scope to this client + type + recap_user_id to prevent cross-client/cross-type/
+        // cross-recap-user ID enumeration (a client can have several recap users, each only
+        // allowed to see their own rekap rows)
         $rekap = LemburRekap::with(['client', 'recapUser'])
             ->where('client_id', $clientId)
             ->where('type', $this->type)
+            ->where('recap_user_id', Auth::id())
             ->findOrFail($id);
 
         $items = LemburRekapItem::with(['lembur.user'])
@@ -165,8 +185,9 @@ class LemburRekapController extends Controller
      */
     public function approve(Request $request)
     {
-        $config   = $this->ensureRecapAccess();
-        $clientId = $config->client_id;
+        $configs   = $this->ensureRecapAccess();
+        $clientId  = $configs->first()->client_id;
+        $configIds = $configs->pluck('id');
 
         $month = $request->input('month');
 
@@ -180,6 +201,7 @@ class LemburRekapController extends Controller
         $lemburs = LemburKaryawan::where('client_id', $clientId)
             ->where('type', $this->type)
             ->where('status', 'approved')
+            ->whereIn('approval_config_id', $configIds)
             ->whereBetween('start', [$periodStart->format('Y-m-d 00:00:00'), $periodEnd->format('Y-m-d 23:59:59')])
             ->get();
 
@@ -190,14 +212,18 @@ class LemburRekapController extends Controller
         $totalPay = $lemburs->sum('overtime_pay');
 
         $rekap = LemburRekap::updateOrCreate(
-            ['client_id' => $clientId, 'period_start' => $periodStart->toDateString(), 'type' => $this->type],
             [
+                'client_id'     => $clientId,
+                'period_start'  => $periodStart->toDateString(),
+                'type'          => $this->type,
                 'recap_user_id' => Auth::id(),
-                'period_end'    => $periodEnd->toDateString(),
-                'total_lembur'  => $lemburs->count(),
-                'total_pay'     => $totalPay,
-                'status'        => 'approved',
-                'actioned_at'   => now(),
+            ],
+            [
+                'period_end'   => $periodEnd->toDateString(),
+                'total_lembur' => $lemburs->count(),
+                'total_pay'    => $totalPay,
+                'status'       => 'approved',
+                'actioned_at'  => now(),
             ]
         );
 
@@ -226,8 +252,8 @@ class LemburRekapController extends Controller
      */
     public function reject(Request $request)
     {
-        $config   = $this->ensureRecapAccess();
-        $clientId = $config->client_id;
+        $configs  = $this->ensureRecapAccess();
+        $clientId = $configs->first()->client_id;
 
         $month = $request->input('month');
 
@@ -239,14 +265,18 @@ class LemburRekapController extends Controller
         }
 
         LemburRekap::updateOrCreate(
-            ['client_id' => $clientId, 'period_start' => $periodStart->toDateString(), 'type' => $this->type],
             [
+                'client_id'     => $clientId,
+                'period_start'  => $periodStart->toDateString(),
+                'type'          => $this->type,
                 'recap_user_id' => Auth::id(),
-                'period_end'    => $periodEnd->toDateString(),
-                'total_lembur'  => 0,
-                'total_pay'     => 0,
-                'status'        => 'rejected',
-                'actioned_at'   => now(),
+            ],
+            [
+                'period_end'   => $periodEnd->toDateString(),
+                'total_lembur' => 0,
+                'total_pay'    => 0,
+                'status'       => 'rejected',
+                'actioned_at'  => now(),
             ]
         );
 
@@ -254,6 +284,7 @@ class LemburRekapController extends Controller
         $rekap = LemburRekap::where('client_id', $clientId)
             ->where('type', $this->type)
             ->where('period_start', $periodStart->toDateString())
+            ->where('recap_user_id', Auth::id())
             ->first();
         if ($rekap) {
             $rekap->items()->delete();
