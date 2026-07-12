@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Datatables\PiketDatatable;
 use App\Http\Controllers\Controller;
 use App\Models\LemburKaryawan;
+use App\Services\LemburKaryawanDetailService;
 use App\Services\LemburKaryawanWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,13 +14,16 @@ use Illuminate\Support\Facades\Storage;
 class PiketController extends Controller
 {
     protected LemburKaryawanWorkflowService $workflow;
+    protected LemburKaryawanDetailService $detailService;
 
     /**
      * @param  LemburKaryawanWorkflowService  $workflow
+     * @param  LemburKaryawanDetailService    $detailService
      */
-    public function __construct(LemburKaryawanWorkflowService $workflow)
+    public function __construct(LemburKaryawanWorkflowService $workflow, LemburKaryawanDetailService $detailService)
     {
         $this->workflow = $workflow;
+        $this->detailService = $detailService;
     }
 
     /**
@@ -47,140 +51,11 @@ class PiketController extends Controller
      */
     public function show($id)
     {
-        $piket = LemburKaryawan::with(['user', 'client', 'checkInLocation', 'checkOutLocation', 'statusBy', 'editedBy', 'approvalLogs'])
-            ->findOrFail($id);
-
-        // Check if user has access to this Piket data
-        $user = Auth::user()->load('areas');
-        $clientIds = $user->accessibleClientIds();
-        if ($clientIds && !in_array($piket->client_id, $clientIds)) {
-            abort(403, 'Unauthorized access');
-        }
-
-        // Same visibility rule as PiketDatatable: Unassigned piket (no active
-        // Assignment) is not viewable at all, and an assigned piket is only viewable
-        // by a client user who is one of the approver steps in that config — so this
-        // JSON endpoint can't be used to bypass the list's row filtering.
-        if (!$piket->approval_config_id) {
-            abort(403, 'Unauthorized access');
-        }
-
-        $isApproverInConfig = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $piket->approval_config_id)
-            ->where('approver_user_id', Auth::id())
-            ->exists();
-        if (!$isApproverInConfig) {
-            abort(403, 'Unauthorized access');
-        }
-
-        // Generate photo URLs using custom_public disk
-        $startPhotoUrl = null;
-        if ($piket->start_photo) {
-            if (Storage::disk('custom_public')->exists($piket->start_photo)) {
-                $startPhotoUrl = Storage::disk('custom_public')->url($piket->start_photo);
-            }
-        }
-
-        $endPhotoUrl = null;
-        if ($piket->end_photo) {
-            if (Storage::disk('custom_public')->exists($piket->end_photo)) {
-                $endPhotoUrl = Storage::disk('custom_public')->url($piket->end_photo);
-            }
-        }
-
-        // Calculate duration
-        $durasi = '-';
-        if ($piket->start && $piket->end) {
-            $startTime = strtotime($piket->start);
-            $endTime = strtotime($piket->end);
-            $durasiDetik = $endTime - $startTime;
-
-            $hours = floor($durasiDetik / 3600);
-            $minutes = floor(($durasiDetik % 3600) / 60);
-
-            $durasi = $hours . ' jam ' . $minutes . ' menit';
-        }
-
-        // Get employee details
-        $karyawan = $piket->user;
-        $empId = $karyawan->emp_id ?? '-';
-        $jabatan = $karyawan->jabatan ?? '-';
-        $nomorRekening = $karyawan->no_rekening ?? '-';
-
-        // Step progress info
-        $stepProgress = null;
-        if ($piket->approval_config_id) {
-            $totalStepsCount = \App\Models\LemburApprovalConfigStep::where('lembur_approval_config_id', $piket->approval_config_id)->count();
-            $stepProgress = $piket->current_approval_step . '/' . $totalStepsCount;
-        }
-
-        // Most recent rejection log
-        $rejectionLog = $piket->approvalLogs->where('status', 'rejected')->sortByDesc('step_order')->first();
-
-        // Determine if current user can act on this piket
-        $canAct = false;
-        $step   = null;
-        if ($piket->status === 'waiting_approval') {
-            if ($piket->approval_config_id) {
-                $step   = $this->workflow->getActiveStep($piket);
-                $canAct = $step && $step->approver_user_id == Auth::id();
-            } else {
-                $canAct = true;
-            }
-        }
-
-        $canEdit = $canAct && $piket->approval_config_id && $step && $step->can_edit_data;
+        $data = $this->detailService->getDetail((int) $id, Auth::user());
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id'                => $piket->id,
-                'client'            => $piket->client->nama ?? '-',
-                'karyawan'          => $karyawan ? $karyawan->first_name . ' ' . $karyawan->last_name : '-',
-                'empid'             => $empId,
-                'jabatan'           => $jabatan,
-                'rekening'          => $nomorRekening,
-                'type'              => ucfirst($piket->type),
-                'tanggal'           => date('d/m/Y', strtotime($piket->start)),
-                'start_time'        => date('H:i', strtotime($piket->start)),
-                'end_time'          => $piket->end ? date('H:i', strtotime($piket->end)) : '-',
-                'durasi'            => $durasi,
-                'overtime_pay'      => $piket->overtime_pay ? 'Rp ' . number_format($piket->overtime_pay, 0, ',', '.') : '-',
-                'status'            => ucfirst($piket->status),
-                'status_at'         => in_array($piket->status, ['approved', 'rejected']) && $piket->status_at
-                    ? date('d/m/Y H:i', strtotime($piket->status_at))
-                    : null,
-                'status_by_name'    => in_array($piket->status, ['approved', 'rejected']) && $piket->statusBy
-                    ? $piket->statusBy->name
-                    : null,
-                'status_from'      => in_array($piket->status, ['approved', 'rejected']) && $piket->status_from
-                    ? ucfirst($piket->status_from)
-                    : null,
-                'edited_by_name'    => $piket->edited_by && $piket->editedBy
-                    ? $piket->editedBy->name
-                    : null,
-                'edited_at'         => $piket->edited_at
-                    ? date('d/m/Y H:i', strtotime($piket->edited_at))
-                    : null,
-                'alasan'            => $piket->alasan ?? '-',
-                'start_photo'       => $startPhotoUrl,
-                'end_photo'         => $endPhotoUrl,
-                'check_in_location' => $piket->checkInLocation ? [
-                    'latitude'  => $piket->checkInLocation->latitude,
-                    'longitude' => $piket->checkInLocation->longitude,
-                    'address'   => $piket->checkInLocation->address,
-                ] : null,
-                'check_out_location' => $piket->checkOutLocation ? [
-                    'latitude'  => $piket->checkOutLocation->latitude,
-                    'longitude' => $piket->checkOutLocation->longitude,
-                    'address'   => $piket->checkOutLocation->address,
-                ] : null,
-                'step_progress'   => $stepProgress,
-                'can_act'         => $canAct,
-                'can_edit'        => $canEdit,
-                'rejection_notes' => $piket->status === 'rejected'
-                    ? ($rejectionLog ? ($rejectionLog->notes ?? '-') : '-')
-                    : null,
-            ]
+            'data'    => $data,
         ]);
     }
 
