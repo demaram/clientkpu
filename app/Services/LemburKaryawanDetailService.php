@@ -39,6 +39,42 @@ class LemburKaryawanDetailService
         $this->assertClientAccessible($record, $authUser);
         $this->assertVisibleToApprover($record, $authUser);
 
+        return $this->buildDetailArray($record, $authUser);
+    }
+
+    /**
+     * Same payload as getDetail(), but gated for a recap_user viewing the "Detail"
+     * button on the Rekap Lembur/Piket form instead of a step approver — the
+     * recap_user is not necessarily an approver on the record's config, so
+     * assertVisibleToApprover() would wrongly 403 them. Access is scoped to
+     * records whose approval_config_id is one the recap_user owns.
+     *
+     * @param  int                                    $id             LemburKaryawan primary key
+     * @param  User                                   $authUser       Currently authenticated recap_user
+     * @param  \Illuminate\Support\Collection<int,int> $ownedConfigIds approval_config_id values owned by $authUser
+     * @return array
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException  403 when unauthorized
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     */
+    public function getDetailForRecapUser(int $id, User $authUser, \Illuminate\Support\Collection $ownedConfigIds): array
+    {
+        $record = $this->repository->findDetail($id);
+
+        $this->assertClientAccessible($record, $authUser);
+
+        if (!$record->approval_config_id || !$ownedConfigIds->contains($record->approval_config_id)) {
+            abort(403, 'Unauthorized access');
+        }
+
+        return $this->buildDetailArray($record, $authUser);
+    }
+
+    /**
+     * Shared payload builder used by both getDetail() and getDetailForRecapUser()
+     * once the caller-specific access check has passed.
+     */
+    private function buildDetailArray(LemburKaryawan $record, User $authUser): array
+    {
         [$startPhotoUrl, $endPhotoUrl] = $this->resolvePhotoUrls($record);
         $karyawan = $record->user;
 
@@ -47,6 +83,7 @@ class LemburKaryawanDetailService
             : null;
 
         $rejectionLog = $record->approvalLogs->where('status', 'rejected')->sortByDesc('step_order')->first();
+        $reopenLog    = $record->approvalLogs->where('status', 'reopened')->sortByDesc('id')->first();
 
         [$canAct, $canEdit] = $this->resolveActionPermissions($record, $authUser);
 
@@ -98,6 +135,7 @@ class LemburKaryawanDetailService
             'rejection_notes' => $record->status === 'rejected'
                 ? ($rejectionLog ? ($rejectionLog->notes ?? '-') : '-')
                 : null,
+            'reopen_notes' => $reopenLog ? ($reopenLog->notes ?? '-') : null,
         ];
 
         // Live monthly/weekly overtime-hour stats only apply to lembur, not piket.

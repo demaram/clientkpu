@@ -53,7 +53,9 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/form',   [LemburRekapController::class, 'form'])->name('form');
         Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
         Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
+        Route::post('/request-update', [LemburRekapController::class, 'requestUpdate'])->name('request-update');
         Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
+        Route::get('/lembur/{id}/detail-ajax', [LemburRekapController::class, 'detailAjax'])->name('detail-ajax');
     });
 
     // Rekap Piket
@@ -62,7 +64,9 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/form',   [PiketRekapController::class, 'form'])->name('form');
         Route::post('/approve', [PiketRekapController::class, 'approve'])->name('approve');
         Route::post('/reject',  [PiketRekapController::class, 'reject'])->name('reject');
+        Route::post('/request-update', [PiketRekapController::class, 'requestUpdate'])->name('request-update');
         Route::get('/{id}/detail', [PiketRekapController::class, 'detail'])->name('detail');
+        Route::get('/piket/{id}/detail-ajax', [PiketRekapController::class, 'detailAjax'])->name('detail-ajax');
     });
 
     // SPPD Routes

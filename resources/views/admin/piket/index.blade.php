@@ -304,6 +304,15 @@
                             $('#row-rejection-notes').hide();
                         }
 
+                        // Reopen ("Request Update") notes row — shown when the recap user
+                        // sent this record back to waiting_approval step 1
+                        if (data.reopen_notes) {
+                            $('#detail-reopen-notes').text(data.reopen_notes);
+                            $('#row-reopen-notes').show();
+                        } else {
+                            $('#row-reopen-notes').hide();
+                        }
+
                         // Last edited by/at row
                         if (data.edited_by_name) {
                             $('#detail-edited-by').text(data.edited_by_name);
