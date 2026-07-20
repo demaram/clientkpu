@@ -116,6 +116,22 @@ class LemburKaryawanWorkflowService
     }
 
     /**
+     * Proxy a request-update ("reopen") action to the Payroll API for the given
+     * type ('lembur'/'piket') — resets an approved record back to waiting_approval
+     * at its first step. Used by the recap "Request Update" button.
+     *
+     * @return array{success:bool, status:int, body:array}
+     */
+    public function proxyRequestUpdate(string $type, int $id, int $actorUserId, string $notes): array
+    {
+        return $this->proxy('post', $this->apiPrefix($type) . "/request-update/{$id}", [
+            'status_by'   => $actorUserId,
+            'status_from' => 'client',
+            'notes'       => $notes,
+        ]);
+    }
+
+    /**
      * Build encrypted subscription headers, call the Payroll API, and normalize
      * the result — uniformly handling missing config and network failures so
      * callers don't need their own try/catch per action.

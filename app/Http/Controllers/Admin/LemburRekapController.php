@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LemburApprovalConfig;
+use App\Models\LemburApprovalConfigStep;
 use App\Models\LemburKaryawan;
 use App\Models\LemburRekap;
 use App\Models\LemburRekapItem;
+use App\Services\LemburKaryawanDetailService;
+use App\Services\LemburKaryawanWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +35,11 @@ class LemburRekapController extends Controller
      * Record type this controller recaps ('lembur' or 'piket').
      */
     protected string $type = 'lembur';
+
+    public function __construct(
+        protected LemburKaryawanWorkflowService $workflow,
+        protected LemburKaryawanDetailService $detailService,
+    ) {}
 
     /**
      * Dot-notation prefix shared by both the view folder ("admin.rekap-lembur")
@@ -119,16 +127,31 @@ class LemburRekapController extends Controller
             $month       = $periodStart->format('Y-m');
         }
 
+        // Include waiting_approval alongside approved so the recap user can see
+        // in-flight records before they try to approve the recap — see approve()
+        // below, which blocks the whole recap while any of these are still pending.
         $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid'])
             ->where('client_id', $clientId)
             ->where('type', $this->type)
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'waiting_approval'])
             ->whereIn('approval_config_id', $configIds)
             ->whereBetween('start', [$periodStart->format('Y-m-d 00:00:00'), $periodEnd->format('Y-m-d 23:59:59')])
             ->orderBy('start')
             ->get();
 
-        $totalPay = $lemburs->sum('overtime_pay');
+        // Only approved records contribute a final overtime_pay figure.
+        $totalPay = $lemburs->where('status', 'approved')->sum('overtime_pay');
+
+        // Bulk step-count lookup (one query for all configs in view) instead of
+        // querying per row, so the "waiting_approval (step/total)" badge doesn't N+1.
+        $stepCounts = LemburApprovalConfigStep::whereIn('lembur_approval_config_id', $configIds)
+            ->selectRaw('lembur_approval_config_id, COUNT(*) as cnt')
+            ->groupBy('lembur_approval_config_id')
+            ->pluck('cnt', 'lembur_approval_config_id');
+
+        $lemburs->each(function ($l) use ($stepCounts) {
+            $l->total_steps = $l->approval_config_id ? ($stepCounts[$l->approval_config_id] ?? 1) : 1;
+        });
 
         // Check existing rekap for this period (scoped to this recap user — a client can
         // split recap duty across several recap users, each with their own row)
@@ -198,9 +221,10 @@ class LemburRekapController extends Controller
             return back()->with('error', 'Periode tidak valid');
         }
 
-        $lemburs = LemburKaryawan::where('client_id', $clientId)
+        $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid'])
+            ->where('client_id', $clientId)
             ->where('type', $this->type)
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'waiting_approval'])
             ->whereIn('approval_config_id', $configIds)
             ->whereBetween('start', [$periodStart->format('Y-m-d 00:00:00'), $periodEnd->format('Y-m-d 23:59:59')])
             ->get();
@@ -209,7 +233,24 @@ class LemburRekapController extends Controller
             return back()->with('error', "Tidak ada data {$this->type} yang dapat direkap untuk periode ini");
         }
 
-        $totalPay = $lemburs->sum('overtime_pay');
+        // Block the whole recap while any record in the period is still mid-flight —
+        // approving now would silently exclude it and understate total_pay.
+        $pending = $lemburs->where('status', 'waiting_approval');
+
+        if ($pending->isNotEmpty()) {
+            $pendingList = $pending->values()->map(fn ($l) => [
+                'kode' => $l->kode,
+                'nama' => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : '-',
+            ])->toArray();
+
+            return back()
+                ->with('error', "Approve rekap {$this->type} gagal — masih ada data yang belum di-approve/reject sepenuhnya.")
+                ->with('pending_list', $pendingList);
+        }
+
+        $approvedLemburs = $lemburs->where('status', 'approved');
+
+        $totalPay = $approvedLemburs->sum('overtime_pay');
 
         $rekap = LemburRekap::updateOrCreate(
             [
@@ -220,7 +261,7 @@ class LemburRekapController extends Controller
             ],
             [
                 'period_end'   => $periodEnd->toDateString(),
-                'total_lembur' => $lemburs->count(),
+                'total_lembur' => $approvedLemburs->count(),
                 'total_pay'    => $totalPay,
                 'status'       => 'approved',
                 'actioned_at'  => now(),
@@ -229,14 +270,14 @@ class LemburRekapController extends Controller
 
         $rekap->items()->delete();
 
-        $items = $lemburs->map(fn ($l) => [
+        $items = $approvedLemburs->map(fn ($l) => [
             'lembur_rekap_id' => $rekap->id,
             'lembur_id'       => $l->id,
             'overtime_pay'    => $l->overtime_pay,
             'counted_hours'   => $l->counted_hours,
             'created_at'      => now(),
             'updated_at'      => now(),
-        ])->toArray();
+        ])->values()->toArray();
 
         LemburRekapItem::insert($items);
 
@@ -292,5 +333,75 @@ class LemburRekapController extends Controller
 
         return redirect()->route($this->prefix() . '.index')
             ->with('success', "Rekap {$this->type} bulan " . $periodStart->translatedFormat('F Y') . ' di-reject');
+    }
+
+    /**
+     * Reopen an approved record back to waiting_approval at its first approval
+     * step ("Request Update" button on the rekap form). Only approved records
+     * owned by this recap_user's config(s) are eligible.
+     *
+     * Delegates the actual status transition to payroll via LemburApprovalService::
+     * requestUpdate() (proxied through LemburKaryawanWorkflowService), the same
+     * way approve/reject of individual records already do — payroll stays the
+     * single owner of approval-state transitions and their audit log.
+     *
+     * @param  Request  $request  Expects `lembur_id`, `reason` (required), `month` (Y-m, for redirect back)
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function requestUpdate(Request $request)
+    {
+        $request->validate([
+            'lembur_id' => 'required|integer',
+            'reason'    => 'required|string|max:1000',
+        ]);
+
+        $configs   = $this->ensureRecapAccess();
+        $configIds = $configs->pluck('id');
+        $month     = $request->input('month');
+
+        $lembur = LemburKaryawan::where('type', $this->type)
+            ->whereIn('approval_config_id', $configIds)
+            ->find($request->input('lembur_id'));
+
+        if (!$lembur) {
+            return redirect()->route($this->prefix() . '.form', ['month' => $month])
+                ->with('error', "Data {$this->type} tidak ditemukan atau bukan bagian dari rekap Anda");
+        }
+
+        if ($lembur->status !== 'approved') {
+            return redirect()->route($this->prefix() . '.form', ['month' => $month])
+                ->with('error', "Data {$this->type} ini tidak dalam status approved");
+        }
+
+        $result = $this->workflow->proxyRequestUpdate($this->type, $lembur->id, Auth::id(), $request->input('reason'));
+
+        if (!$result['success']) {
+            return redirect()->route($this->prefix() . '.form', ['month' => $month])
+                ->with('error', $result['body']['message'] ?? "Gagal request update {$this->type}");
+        }
+
+        return redirect()->route($this->prefix() . '.form', ['month' => $month])
+            ->with('success', "Request update {$this->type} berhasil dikirim, menunggu approval ulang dari step pertama");
+    }
+
+    /**
+     * AJAX JSON detail for the "Detail" button on the rekap form's table.
+     *
+     * Access is scoped to configs owned by this recap_user (ensureRecapAccess()),
+     * not step-approver visibility like admin.lembur.show — a recap_user isn't
+     * necessarily an approver on the record's config. See
+     * LemburKaryawanDetailService::getDetailForRecapUser().
+     *
+     * @param  int  $id  LemburKaryawan primary key
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function detailAjax(int $id)
+    {
+        $configs   = $this->ensureRecapAccess();
+        $configIds = $configs->pluck('id');
+
+        $data = $this->detailService->getDetailForRecapUser($id, Auth::user(), $configIds);
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 }

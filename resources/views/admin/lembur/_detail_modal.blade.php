@@ -84,6 +84,10 @@
                                         <th>Alasan Penolakan</th>
                                         <td id="detail-rejection-notes" class="text-danger">-</td>
                                     </tr>
+                                    <tr id="row-reopen-notes" style="display:none;">
+                                        <th>Alasan Request Update</th>
+                                        <td id="detail-reopen-notes" class="text-warning">-</td>
+                                    </tr>
                                     <tr id="row-step-progress" style="display:none;">
                                         <th>Progres Step</th>
                                         <td id="detail-step-progress">-</td>

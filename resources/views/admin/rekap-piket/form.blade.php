@@ -15,6 +15,14 @@
         </div>
     @endif
 
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+            <h5><i class="icon fas fa-check"></i> Berhasil!</h5>
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">Pilih Periode Rekap</h3>
@@ -51,7 +59,7 @@
         <div class="card-body">
             @if($lemburs->isEmpty())
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> Tidak ada data piket yang sudah disetujui untuk periode
+                    <i class="fas fa-info-circle"></i> Tidak ada data piket untuk periode
                     <strong>{{ $periodStart->translatedFormat('F Y') }}</strong>.
                 </div>
             @else
@@ -67,12 +75,14 @@
                                 <th>Jam Mulai</th>
                                 <th>Jam Selesai</th>
                                 <th>Durasi (jam)</th>
+                                <th>Status</th>
                                 <th>Overtime Pay</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($lemburs as $i => $l)
-                            <tr>
+                            <tr class="{{ $l->status === 'waiting_approval' ? 'table-warning' : '' }}">
                                 <td>{{ $i + 1 }}</td>
                                 <td>{{ $l->kode }}</td>
                                 <td>
@@ -95,14 +105,38 @@
                                     @else -
                                     @endif
                                 </td>
-                                <td class="text-success font-weight-bold">Rp {{ number_format($l->overtime_pay ?? 0, 0, ',', '.') }}</td>
+                                <td>
+                                    @if($l->status === 'approved')
+                                        <span class="badge badge-success">Approved</span>
+                                    @else
+                                        <span class="badge badge-warning">Waiting Approval ({{ $l->current_approval_step }}/{{ $l->total_steps }})</span>
+                                    @endif
+                                </td>
+                                <td class="text-success font-weight-bold">
+                                    @if($l->overtime_pay)
+                                        Rp {{ number_format($l->overtime_pay, 0, ',', '.') }}
+                                    @else -
+                                    @endif
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-info" title="Detail"
+                                        onclick="showLemburDetail({{ $l->id }})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    @if($l->status === 'approved')
+                                        <button type="button" class="btn btn-sm btn-warning" title="Request Update"
+                                            onclick="openRequestUpdateModal({{ $l->id }})">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    @endif
+                                </td>
                             </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
                             <tr class="table-success">
-                                <td colspan="8" class="text-right font-weight-bold">Total Overtime Pay:</td>
-                                <td class="font-weight-bold text-success">Rp {{ number_format($totalPay, 0, ',', '.') }}</td>
+                                <td colspan="9" class="text-right font-weight-bold">Total Overtime Pay:</td>
+                                <td colspan="2" class="font-weight-bold text-success">Rp {{ number_format($totalPay, 0, ',', '.') }}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -129,10 +163,187 @@
             @endif
         </div>
     </div>
+
+    {{-- Detail Modal (AJAX) --}}
+    <div class="modal fade" id="rekapDetailModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title">Detail Piket Karyawan</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <th width="35%">Nama Karyawan</th>
+                            <td id="rd-karyawan">-</td>
+                        </tr>
+                        <tr>
+                            <th>EmpId</th>
+                            <td id="rd-empid">-</td>
+                        </tr>
+                        <tr>
+                            <th>Jabatan</th>
+                            <td id="rd-jabatan">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal</th>
+                            <td id="rd-tanggal">-</td>
+                        </tr>
+                        <tr>
+                            <th>Jam Mulai — Selesai</th>
+                            <td><span id="rd-start">-</span> — <span id="rd-end">-</span></td>
+                        </tr>
+                        <tr>
+                            <th>Durasi</th>
+                            <td id="rd-durasi">-</td>
+                        </tr>
+                        <tr>
+                            <th>Status</th>
+                            <td id="rd-status">-</td>
+                        </tr>
+                        <tr id="rd-row-step-progress" style="display:none;">
+                            <th>Progres Step</th>
+                            <td id="rd-step-progress">-</td>
+                        </tr>
+                        <tr>
+                            <th>Overtime Pay</th>
+                            <td id="rd-overtime-pay" class="font-weight-bold text-success">-</td>
+                        </tr>
+                        <tr id="rd-row-reopen-notes" style="display:none;">
+                            <th>Alasan Request Update</th>
+                            <td id="rd-reopen-notes" class="text-warning">-</td>
+                        </tr>
+                        <tr>
+                            <th>Alasan / Keterangan</th>
+                            <td id="rd-alasan">-</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Request Update Modal --}}
+    <form method="POST" action="{{ route('admin.rekap-piket.request-update') }}" id="formRequestUpdate">
+        @csrf
+        <input type="hidden" name="month" value="{{ $month }}">
+        <input type="hidden" name="lembur_id" id="requestUpdateLemburId" value="">
+        <div class="modal fade" id="requestUpdateModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title">Request Update Piket</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Data ini akan dikembalikan ke status <strong>Waiting Approval</strong> pada step approval
+                            pertama. Approval sebelumnya perlu diulang dari awal.</p>
+                        <div class="form-group">
+                            <label for="requestUpdateReason">Alasan <span class="text-danger">*</span></label>
+                            <textarea name="reason" id="requestUpdateReason" class="form-control" rows="3" required
+                                placeholder="Jelaskan alasan data ini perlu di-update ulang..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-undo"></i> Kirim Request Update
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 @stop
 
 @section('css')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
         tfoot td { font-weight: bold; }
     </style>
+@stop
+
+@section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script>
+        // Show the Detail modal for a single piket row via AJAX.
+        function showLemburDetail(id) {
+            $.ajax({
+                url: '{{ url("admin/rekap-piket/piket") }}/' + id + '/detail-ajax',
+                type: 'GET',
+                success: function(response) {
+                    if (!response.success) return;
+                    var data = response.data;
+
+                    $('#rd-karyawan').text(data.karyawan || '-');
+                    $('#rd-empid').text(data.empid || '-');
+                    $('#rd-jabatan').text(data.jabatan || '-');
+                    $('#rd-tanggal').text(data.tanggal || '-');
+                    $('#rd-start').text(data.start_time || '-');
+                    $('#rd-end').text(data.end_time || '-');
+                    $('#rd-durasi').text(data.durasi || '-');
+                    $('#rd-status').html('<span class="badge badge-' +
+                        (data.status === 'Approved' ? 'success' : 'warning') +
+                        '">' + data.status + '</span>');
+                    $('#rd-overtime-pay').text(data.overtime_pay || '-');
+                    $('#rd-alasan').text(data.alasan || '-');
+
+                    if (data.step_progress) {
+                        $('#rd-step-progress').text(data.step_progress);
+                        $('#rd-row-step-progress').show();
+                    } else {
+                        $('#rd-row-step-progress').hide();
+                    }
+
+                    if (data.reopen_notes) {
+                        $('#rd-reopen-notes').text(data.reopen_notes);
+                        $('#rd-row-reopen-notes').show();
+                    } else {
+                        $('#rd-row-reopen-notes').hide();
+                    }
+
+                    $('#rekapDetailModal').modal('show');
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.message || 'Gagal mengambil detail piket', 'error');
+                }
+            });
+        }
+
+        // Open the Request Update modal for a single approved piket row.
+        function openRequestUpdateModal(id) {
+            $('#requestUpdateLemburId').val(id);
+            $('#requestUpdateReason').val('');
+            $('#requestUpdateModal').modal('show');
+        }
+
+        @if(session('pending_list'))
+            // Approve Rekap was blocked because some rows are still waiting_approval —
+            // show the offending rows via SweetAlert instead of the plain alert above.
+            $(function() {
+                var pending = @json(session('pending_list'));
+                var listHtml = '<ul class="text-left mb-0">' +
+                    pending.map(function(p) {
+                        return '<li>' + p.kode + ' a.n. ' + p.nama + '</li>';
+                    }).join('') +
+                    '</ul>';
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Approve Rekap Gagal',
+                    html: 'Masih ada data yang belum di-approve/reject sepenuhnya:' + listHtml,
+                });
+            });
+        @endif
+    </script>
 @stop
