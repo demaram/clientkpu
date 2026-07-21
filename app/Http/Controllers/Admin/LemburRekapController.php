@@ -169,7 +169,7 @@ class LemburRekapController extends Controller
 
     /**
      * Display the detail page for a single overtime recap, grouped by employee.
-     * Requires recap_user_id access — same gate as form/approve/reject.
+     * Requires recap_user_id access — same gate as form/approve.
      *
      * @param  int  $id  LemburRekap primary key
      * @return \Illuminate\View\View
@@ -286,56 +286,6 @@ class LemburRekapController extends Controller
     }
 
     /**
-     * Upsert a lembur_rekap record with status=rejected and clear its items.
-     *
-     * @param  Request  $request  Expects `month` (Y-m format)
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function reject(Request $request)
-    {
-        $configs  = $this->ensureRecapAccess();
-        $clientId = $configs->first()->client_id;
-
-        $month = $request->input('month');
-
-        try {
-            $periodStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-            $periodEnd   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-        } catch (\Exception $e) {
-            return back()->with('error', 'Periode tidak valid');
-        }
-
-        LemburRekap::updateOrCreate(
-            [
-                'client_id'     => $clientId,
-                'period_start'  => $periodStart->toDateString(),
-                'type'          => $this->type,
-                'recap_user_id' => Auth::id(),
-            ],
-            [
-                'period_end'   => $periodEnd->toDateString(),
-                'total_lembur' => 0,
-                'total_pay'    => 0,
-                'status'       => 'rejected',
-                'actioned_at'  => now(),
-            ]
-        );
-
-        // Rejected rekap has no items
-        $rekap = LemburRekap::where('client_id', $clientId)
-            ->where('type', $this->type)
-            ->where('period_start', $periodStart->toDateString())
-            ->where('recap_user_id', Auth::id())
-            ->first();
-        if ($rekap) {
-            $rekap->items()->delete();
-        }
-
-        return redirect()->route($this->prefix() . '.index')
-            ->with('success', "Rekap {$this->type} bulan " . $periodStart->translatedFormat('F Y') . ' di-reject');
-    }
-
-    /**
      * Reopen an approved record back to waiting_approval at its first approval
      * step ("Request Update" button on the rekap form). Only approved records
      * owned by this recap_user's config(s) are eligible.
@@ -403,5 +353,85 @@ class LemburRekapController extends Controller
         $data = $this->detailService->getDetailForRecapUser($id, Auth::user(), $configIds);
 
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * Reject a single waiting_approval record directly from its row action button
+     * on the rekap form — mirrors LemburController::reject()/PiketController::
+     * reject() exactly (same step-approver validation, same payroll proxy), just
+     * entered from the rekap page instead of the Lembur/Piket page.
+     *
+     * Only usable while this period's rekap hasn't been approved yet — once
+     * approved, further changes should go through the normal Lembur/Piket
+     * approver page instead of this shortcut.
+     *
+     * @param  Request  $request  Expects `lembur_id`, `notes` (required reason)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function rejectRecord(Request $request)
+    {
+        $request->validate([
+            'lembur_id' => 'required|integer',
+            'notes'     => 'required|string|max:1000',
+        ]);
+
+        $configs   = $this->ensureRecapAccess();
+        $configIds = $configs->pluck('id');
+
+        $lembur = LemburKaryawan::where('type', $this->type)
+            ->whereIn('approval_config_id', $configIds)
+            ->find($request->input('lembur_id'));
+
+        if (!$lembur) {
+            return response()->json([
+                'success' => false,
+                'message' => "Data {$this->type} tidak ditemukan atau bukan bagian dari rekap Anda",
+            ], 404);
+        }
+
+        if ($lembur->status !== 'waiting_approval') {
+            return response()->json([
+                'success' => false,
+                'message' => "Data {$this->type} ini tidak dalam status menunggu approval",
+            ]);
+        }
+
+        $periodStart = Carbon::parse($lembur->start)->startOfMonth()->toDateString();
+
+        $existingRekap = LemburRekap::where('client_id', $lembur->client_id)
+            ->where('type', $this->type)
+            ->where('period_start', $periodStart)
+            ->where('recap_user_id', Auth::id())
+            ->first();
+
+        if ($existingRekap && $existingRekap->status === 'approved') {
+            return response()->json([
+                'success' => false,
+                'message' => "Rekap {$this->type} periode ini sudah di-approve, tidak bisa reject data lagi",
+            ], 403);
+        }
+
+        $step = $this->workflow->getActiveStep($lembur);
+
+        if ($step && $step->approver_user_id != Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Bukan giliran Anda untuk reject {$this->type} ini",
+            ], 403);
+        }
+
+        $result = $this->workflow->proxyReject($this->type, $lembur->id, Auth::id(), $request->input('notes'));
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['body']['message'] ?? "Gagal reject {$this->type}",
+            ], $result['status']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['body']['message'] ?? "Data {$this->type} berhasil di-reject",
+        ]);
     }
 }
