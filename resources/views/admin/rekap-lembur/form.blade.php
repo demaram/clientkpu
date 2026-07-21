@@ -129,6 +129,12 @@
                                             <i class="fas fa-undo"></i>
                                         </button>
                                     @endif
+                                    @if($l->status === 'waiting_approval' && (!$existingRekap || $existingRekap->status !== 'approved'))
+                                        <button type="button" class="btn btn-sm btn-danger" title="Reject"
+                                            onclick="rejectLemburRow({{ $l->id }})">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach
@@ -149,14 +155,6 @@
                         <button type="submit" name="action" value="approve" class="btn btn-success mr-2"
                             onclick="return confirm('Approve rekap lembur bulan {{ $periodStart->translatedFormat('F Y') }}? Total: Rp {{ number_format($totalPay, 0, '.', '.') }}')">
                             <i class="fas fa-check-circle"></i> Approve Rekap
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('admin.rekap-lembur.reject') }}" class="d-inline">
-                        @csrf
-                        <input type="hidden" name="month" value="{{ $month }}">
-                        <button type="submit" class="btn btn-danger"
-                            onclick="return confirm('Reject rekap lembur bulan {{ $periodStart->translatedFormat('F Y') }}?')">
-                            <i class="fas fa-times-circle"></i> Reject Rekap
                         </button>
                     </form>
                 </div>
@@ -325,6 +323,60 @@
             $('#requestUpdateLemburId').val(id);
             $('#requestUpdateReason').val('');
             $('#requestUpdateModal').modal('show');
+        }
+
+        // Reject a single waiting_approval lembur row — mirrors rejectLembur() on
+        // the Data Lembur page (same reason prompt, same step-approver rule).
+        function rejectLemburRow(id) {
+            Swal.fire({
+                title: 'Reject Lembur',
+                html: '<p class="text-left mb-2">Masukkan alasan penolakan:</p>' +
+                      '<textarea id="swal-reject-notes" class="swal2-textarea" placeholder="Alasan penolakan..." style="height:100px;"></textarea>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Reject',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                preConfirm: function() {
+                    var notes = document.getElementById('swal-reject-notes').value.trim();
+                    if (!notes) {
+                        Swal.showValidationMessage('Alasan penolakan wajib diisi');
+                        return false;
+                    }
+                    return notes;
+                }
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
+
+                $.ajax({
+                    url: '{{ route("admin.rekap-lembur.reject-record") }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        lembur_id: id,
+                        notes: result.value,
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: response.message,
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then(function() {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal reject lembur', 'error');
+                    }
+                });
+            });
         }
 
         @if(session('pending_list'))

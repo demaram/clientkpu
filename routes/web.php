@@ -51,8 +51,8 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/',       [LemburRekapController::class, 'index'])->name('index');
         Route::get('/form',   [LemburRekapController::class, 'form'])->name('form');
         Route::post('/approve', [LemburRekapController::class, 'approve'])->name('approve');
-        Route::post('/reject',  [LemburRekapController::class, 'reject'])->name('reject');
         Route::post('/request-update', [LemburRekapController::class, 'requestUpdate'])->name('request-update');
+        Route::post('/reject-record', [LemburRekapController::class, 'rejectRecord'])->name('reject-record');
         Route::get('/{id}/detail', [LemburRekapController::class, 'detail'])->name('detail');
         Route::get('/lembur/{id}/detail-ajax', [LemburRekapController::class, 'detailAjax'])->name('detail-ajax');
     });
@@ -62,8 +62,8 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/',       [PiketRekapController::class, 'index'])->name('index');
         Route::get('/form',   [PiketRekapController::class, 'form'])->name('form');
         Route::post('/approve', [PiketRekapController::class, 'approve'])->name('approve');
-        Route::post('/reject',  [PiketRekapController::class, 'reject'])->name('reject');
         Route::post('/request-update', [PiketRekapController::class, 'requestUpdate'])->name('request-update');
+        Route::post('/reject-record', [PiketRekapController::class, 'rejectRecord'])->name('reject-record');
         Route::get('/{id}/detail', [PiketRekapController::class, 'detail'])->name('detail');
         Route::get('/piket/{id}/detail-ajax', [PiketRekapController::class, 'detailAjax'])->name('detail-ajax');
     });
