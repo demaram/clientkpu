@@ -94,14 +94,21 @@ class LemburKaryawanWorkflowService
     /**
      * Proxy a reject action to the Payroll API for the given type ('lembur'/'piket').
      *
+     * @param  bool  $skipActorCheck  Bypass payroll's step-approver ownership check —
+     *                                used by the recap "Reject" row action, since a
+     *                                recap_user is not necessarily an approver on the
+     *                                record's config. The normal Lembur/Piket page
+     *                                reject leaves this false, so step ownership is
+     *                                still enforced there.
      * @return array{success:bool, status:int, body:array}
      */
-    public function proxyReject(string $type, int $id, int $actorUserId, ?string $notes): array
+    public function proxyReject(string $type, int $id, int $actorUserId, ?string $notes, bool $skipActorCheck = false): array
     {
         return $this->proxy('post', $this->apiPrefix($type) . "/reject/{$id}", [
-            'status_by'   => $actorUserId,
-            'status_from' => 'client',
-            'notes'       => $notes,
+            'status_by'        => $actorUserId,
+            'status_from'      => 'client',
+            'notes'            => $notes,
+            'skip_actor_check' => $skipActorCheck,
         ]);
     }
 
