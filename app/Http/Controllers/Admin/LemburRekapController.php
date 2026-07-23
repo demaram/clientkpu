@@ -415,7 +415,9 @@ class LemburRekapController extends Controller
             ], 403);
         }
 
-        $result = $this->workflow->proxyReject($this->type, $lembur->id, Auth::id(), $request->input('notes'));
+        // skip_actor_check=true: a recap_user is not necessarily the current step's
+        // approver, so payroll's step-ownership check doesn't apply to this action.
+        $result = $this->workflow->proxyReject($this->type, $lembur->id, Auth::id(), $request->input('notes'), true);
 
         if (!$result['success']) {
             return response()->json([
