@@ -415,15 +415,6 @@ class LemburRekapController extends Controller
             ], 403);
         }
 
-        $step = $this->workflow->getActiveStep($lembur);
-
-        if ($step && $step->approver_user_id != Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => "Bukan giliran Anda untuk reject {$this->type} ini",
-            ], 403);
-        }
-
         $result = $this->workflow->proxyReject($this->type, $lembur->id, Auth::id(), $request->input('notes'));
 
         if (!$result['success']) {
