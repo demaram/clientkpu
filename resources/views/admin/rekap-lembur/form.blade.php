@@ -129,7 +129,7 @@
                                             <i class="fas fa-undo"></i>
                                         </button>
                                     @endif
-                                    @if($l->status === 'waiting_approval' && (!$existingRekap || $existingRekap->status !== 'approved'))
+                                    @if($l->status === 'waiting_approval' || $l->status === 'approved')
                                         <button type="button" class="btn btn-sm btn-danger" title="Reject"
                                             onclick="rejectLemburRow({{ $l->id }})">
                                             <i class="fas fa-times-circle"></i>
@@ -148,11 +148,11 @@
                     </table>
                 </div>
 
-                <div class="mt-3 d-flex justify-content-center gap-2">
+                <div class="mt-3 text-center">
                     <form method="POST" action="{{ route('admin.rekap-lembur.approve') }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="month" value="{{ $month }}">
-                        <button type="submit" name="action" value="approve" class="btn btn-success mr-2"
+                        <button type="submit" name="action" value="approve" class="btn btn-success"
                             onclick="return confirm('Approve rekap lembur bulan {{ $periodStart->translatedFormat('F Y') }}? Total: Rp {{ number_format($totalPay, 0, '.', '.') }}')">
                             <i class="fas fa-check-circle"></i> Approve Rekap
                         </button>
