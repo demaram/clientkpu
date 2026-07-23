@@ -356,10 +356,14 @@ class LemburRekapController extends Controller
     }
 
     /**
-     * Reject a single waiting_approval record directly from its row action button
-     * on the rekap form — mirrors LemburController::reject()/PiketController::
-     * reject() exactly (same step-approver validation, same payroll proxy), just
-     * entered from the rekap page instead of the Lembur/Piket page.
+     * Reject a single record directly from its row action button on the rekap
+     * form — mirrors LemburController::reject()/PiketController::reject() (same
+     * step-approver validation, same payroll proxy), just entered from the rekap
+     * page instead of the Lembur/Piket page.
+     *
+     * Allowed for both 'waiting_approval' and 'approved' rows — a recap_user can
+     * reject a record that already went through full approval, not just one
+     * still mid-flight (payroll's LemburApprovalService::reject() accepts both).
      *
      * Only usable while this period's rekap hasn't been approved yet — once
      * approved, further changes should go through the normal Lembur/Piket
@@ -389,10 +393,10 @@ class LemburRekapController extends Controller
             ], 404);
         }
 
-        if ($lembur->status !== 'waiting_approval') {
+        if (!in_array($lembur->status, ['waiting_approval', 'approved'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => "Data {$this->type} ini tidak dalam status menunggu approval",
+                'message' => "Data {$this->type} ini tidak dalam status yang dapat di-reject",
             ]);
         }
 
