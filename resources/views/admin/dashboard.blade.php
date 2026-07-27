@@ -14,70 +14,18 @@
             {{ session('success') }}
         </div>
     @endif
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Selamat Datang di Dashboard Admin</h3>
-                </div>
-                <div class="card-body">
-                    <p>Ini adalah Portal Client Kpusahatama.</p>
-                    <p>Anda telah berhasil login ke sistem. Gunakan menu di sebelah kiri untuk navigasi.</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Informasi User</h3>
-                </div>
-                <div class="card-body">
-                    <table class="table table-bordered">
-                        <tr>
-                            <th style="width: 200px">Nama</th>
-                            <td>{{ $user['name'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Email</th>
-                            <td>{{ $user['email'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Company</th>
-                            <td>{{ $user['company'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Phone</th>
-                            <td>{{ $user['phone'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Occupation</th>
-                            <td>{{ $user['occupation'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Last Login</th>
-                            <td>{{ $user['last_login'] ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Roles</th>
-                            <td>
-                                @if(isset($user['roles']) && is_array($user['roles']))
-                                    @foreach($user['roles'] as $role)
-                                        <span class="badge badge-primary">{{ $role }}</span>
-                                    @endforeach
-                                @else
-                                    -
-                                @endif
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
+            <form method="GET" action="{{ route('admin.dashboard') }}" class="form-inline">
+                <label for="month" class="mr-2">Periode</label>
+                <input type="month" id="month" name="month" class="form-control mr-2" value="{{ $month }}">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter mr-1"></i> Filter</button>
+            </form>
         </div>
     </div>
 
+    <h5 class="mt-3 mb-2">Lembur</h5>
     <div class="row">
         <div class="col-lg-3 col-6">
             <div class="small-box bg-warning">
@@ -132,6 +80,61 @@
         </div>
     </div>
 
+    <h5 class="mt-3 mb-2">Piket</h5>
+    <div class="row">
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ $piketCounts['pending'] ?? 0 }}</h3>
+                    <p>On Process</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>{{ $piketCounts['waiting_approval'] ?? 0 }}</h3>
+                    <p>Waiting Approval</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ $piketCounts['approved'] ?? 0 }}</h3>
+                    <p>Approved</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-danger">
+                <div class="inner">
+                    <h3>{{ $piketCounts['rejected'] ?? 0 }}</h3>
+                    <p>Rejected</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+    </div>
+
     {{-- SPPD Pending Widget --}}
     @if($sppdPending > 0)
     <div class="row">
@@ -145,6 +148,44 @@
                     <i class="fas fa-plane"></i>
                 </div>
                 <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">Lihat SPPD <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Layer 1 chart — visible to step-1 approvers only --}}
+    @if($isStep1Approver && $chartLayer1Data)
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        Ajuan Lembur per Bulan - Approval Layer 1
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="lemburLayer1Chart" style="min-height: 280px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Layer 2 chart — visible to step-2 approvers only --}}
+    @if($isStep2Approver && $chartLayer2Data)
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        Ajuan Lembur per Bulan - Approval Layer 2
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="lemburLayer2Chart" style="min-height: 280px;"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -169,7 +210,6 @@
     </div>
     @endif
 
-
 @stop
 
 @section('css')
@@ -178,7 +218,67 @@
 
 @section('js')
     <script>
-        console.log("Dashboard loaded!");
+        @if($isStep1Approver && $chartLayer1Data)
+        (function () {
+            var ctx = document.getElementById('lemburLayer1Chart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartLayer1Data['labels']) !!},
+                    datasets: [{
+                        label: 'Jumlah Ajuan Lembur',
+                        data: {!! json_encode($chartLayer1Data['values']) !!},
+                        backgroundColor: 'rgba(60, 141, 188, 0.75)',
+                        borderColor: 'rgba(60, 141, 188, 1)',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                precision: 0,
+                            }
+                        }]
+                    }
+                }
+            });
+        })();
+        @endif
+
+        @if($isStep2Approver && $chartLayer2Data)
+        (function () {
+            var ctx = document.getElementById('lemburLayer2Chart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartLayer2Data['labels']) !!},
+                    datasets: [{
+                        label: 'Jumlah Ajuan Lembur',
+                        data: {!! json_encode($chartLayer2Data['values']) !!},
+                        backgroundColor: 'rgba(0, 166, 90, 0.75)',
+                        borderColor: 'rgba(0, 166, 90, 1)',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                precision: 0,
+                            }
+                        }]
+                    }
+                }
+            });
+        })();
+        @endif
 
         @if($isRecapUser && $chartData)
         (function () {
@@ -191,8 +291,8 @@
                     datasets: [{
                         label: 'Total Pay (Rp)',
                         data: {!! json_encode($chartData['values']) !!},
-                        backgroundColor: 'rgba(60, 141, 188, 0.75)',
-                        borderColor: 'rgba(60, 141, 188, 1)',
+                        backgroundColor: 'rgba(243, 156, 18, 0.75)',
+                        borderColor: 'rgba(243, 156, 18, 1)',
                         borderWidth: 1,
                     }]
                 },

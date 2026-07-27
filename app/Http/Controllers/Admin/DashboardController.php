@@ -3,82 +3,51 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\LemburKaryawan;
-use App\Models\LemburRekap;
 use App\Models\Sppd;
-use App\Models\SppdApprovalConfigStep;
+use App\Services\DashboardStatsService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
 {
-
     /**
      * Show the admin dashboard.
      *
-     * For all users: displays user biodata and lembur status counts.
-     * For recap users: additionally renders a monthly bar chart showing
-     * SUM(total_pay) of approved lembur_rekap records over the last 12 months,
-     * scoped to the logged-in user's client_id.
+     * Lembur and Piket status counts are scoped to rows the logged-in user
+     * can actually approve (same rule as LemburDatatable/PiketDatatable) and
+     * to the selected month/year filter (defaults to the current month).
      *
+     * Three monthly charts always cover a fixed trailing 12-month window,
+     * independent of the month/year filter, and are each shown only to users
+     * relevant to that layer: step-1 approvers, step-2 approvers, and recap
+     * users respectively.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Services\DashboardStatsService  $stats
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request, DashboardStatsService $stats)
     {
         $user      = Auth::user();
         $clientIds = $user?->accessibleClientIds() ?? [];
 
-        // --- Lembur status counts (all users) ---
-        $statusCounts = LemburKaryawan::query()
-            ->where('type', 'lembur')
-            ->when($clientIds, function ($query) use ($clientIds) {
-                return $query->whereIn('client_id', $clientIds);
-            })
-            ->selectRaw("status, COUNT(*) as total")
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        [$month, $periodStart, $periodEnd] = $this->resolvePeriod($request);
 
-        $lemburCounts = [
-            'pending'          => (int) ($statusCounts['pending'] ?? 0),
-            'waiting_approval' => (int) ($statusCounts['waiting_approval'] ?? 0),
-            'approved'         => (int) ($statusCounts['approved'] ?? 0),
-            'rejected'         => (int) ($statusCounts['rejected'] ?? 0),
-        ];
+        $lemburCounts = $stats->statusCounts('lembur', $clientIds, $user, $periodStart, $periodEnd);
+        $piketCounts  = $stats->statusCounts('piket', $clientIds, $user, $periodStart, $periodEnd);
 
-        // --- Chart data (recap users only) ---
+        // --- Layer 1 / Layer 2 charts (step approvers only) ---
+        $isStep1Approver = $stats->isApproverAtStep(1, $clientIds, $user);
+        $chartLayer1Data = $isStep1Approver ? $stats->layerSubmissionSeries(1, $clientIds, $user) : null;
+
+        $isStep2Approver = $stats->isApproverAtStep(2, $clientIds, $user);
+        $chartLayer2Data = $isStep2Approver ? $stats->layerSubmissionSeries(2, $clientIds, $user) : null;
+
+        // --- Layer 3 chart: total pay per month (recap users only) ---
         $isRecapUser = (bool) Session::get('is_recap_user', false);
-        $chartData   = null;
-
-        if ($isRecapUser && $clientIds) {
-            $start = now()->subMonths(11)->startOfMonth();
-            $end   = now()->endOfMonth();
-
-            // Build ordered 12-month label array: oldest → newest
-            $months = [];
-            for ($i = 11; $i >= 0; $i--) {
-                $months[] = now()->subMonths($i)->format('Y-m');
-            }
-
-            // Aggregate approved rekap totals per calendar month
-            $rekapByMonth = LemburRekap::whereIn('client_id', $clientIds)
-                ->where('status', 'approved')
-                ->whereBetween('period_start', [$start, $end])
-                ->selectRaw("DATE_FORMAT(period_start, '%Y-%m') as month, SUM(total_pay) as total_pay")
-                ->groupBy('month')
-                ->pluck('total_pay', 'month');
-
-            $chartData = [
-                'labels' => array_map(
-                    fn ($m) => Carbon::createFromFormat('Y-m', $m)->format('M Y'),
-                    $months
-                ),
-                'values' => array_map(
-                    fn ($m) => (float) ($rekapByMonth[$m] ?? 0),
-                    $months
-                ),
-            ];
-        }
+        $chartData   = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds) : null;
 
         // --- SPPD pending count (waiting_approval with client-step active) ---
         $sppdPending = 0;
@@ -92,6 +61,42 @@ class DashboardController extends Controller
                 ->count();
         }
 
-        return view('admin.dashboard', compact('user', 'lemburCounts', 'isRecapUser', 'chartData', 'sppdPending'));
+        return view('admin.dashboard', compact(
+            'user',
+            'month',
+            'lemburCounts',
+            'piketCounts',
+            'isStep1Approver',
+            'chartLayer1Data',
+            'isStep2Approver',
+            'chartLayer2Data',
+            'isRecapUser',
+            'chartData',
+            'sppdPending'
+        ));
+    }
+
+    /**
+     * Parse the `month` (Y-m) request filter used to scope the status cards,
+     * defaulting to and falling back to the current month — same convention
+     * as LemburRekapController::form().
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return array{0: string, 1: \Carbon\Carbon, 2: \Carbon\Carbon}
+     */
+    private function resolvePeriod(Request $request): array
+    {
+        $month = $request->input('month', Carbon::now()->format('Y-m'));
+
+        try {
+            $periodStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $periodEnd   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+        } catch (\Exception $e) {
+            $periodStart = Carbon::now()->startOfMonth();
+            $periodEnd   = Carbon::now()->endOfMonth();
+            $month       = $periodStart->format('Y-m');
+        }
+
+        return [$month, $periodStart, $periodEnd];
     }
 }

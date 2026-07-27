@@ -2,10 +2,10 @@
 
 namespace App\Datatables;
 
-use App\Models\LemburApprovalConfigAssignment;
 use App\Models\LemburKaryawan;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\LemburApprovalVisibilityService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,9 +13,13 @@ use Yajra\DataTables\Facades\DataTables;
 
 class PiketDatatable
 {
+	public function __construct(private LemburApprovalVisibilityService $visibility)
+	{
+	}
+
 	public function render(Request $request)
 	{
-		$user = User::with('areas')->find(Auth::id());
+		$user = User::find(Auth::id());
 
 		if (!$user) {
 			abort(401);
@@ -60,9 +64,8 @@ class PiketDatatable
 			->when($clientIds, function ($query) use ($clientIds) {
 				return $query->whereIn('client_id', $clientIds);
 			})
-			->whereIn('project_id', $projectIds)
 			->where(function ($query) use ($user) {
-				$this->applyApprovalVisibility($query, $user);
+				$this->visibility->apply($query, $user);
 			})
 			->where('type', 'piket')
 			->when($namaKaryawan !== '', function ($query) use ($namaKaryawan) {
@@ -258,57 +261,4 @@ class PiketDatatable
 			->make(true);
 	}
 
-	/**
-	 * Restrict the query to rows the client user is allowed to see.
-	 *
-	 * Same rule as LemburDatatable — `approval_config_id` is only stamped onto a
-	 * row at checkout time, so a row still `status = 'pending'` (checked in, not
-	 * yet checked out) always has `approval_config_id = NULL`, even when the
-	 * karyawan already has an active Assignment. Relying on `approval_config_id`
-	 * alone therefore hid every not-yet-checked-out row, not just genuinely
-	 * Unassigned karyawan (no active Assignment at all).
-	 *
-	 * A row is visible when either:
-	 *  - it already has a resolved `approval_config_id`, and the user is one of
-	 *    the approver steps in that config (any step, not just the current one); or
-	 *  - `approval_config_id` is still NULL, but the karyawan currently has an
-	 *    active Assignment for this row's client, and the user is one of the
-	 *    approver steps in that Assignment's config.
-	 *
-	 * Genuinely Unassigned karyawan (no active Assignment at all) still fall
-	 * through both branches and stay hidden, matching the 2026-07-11 decision.
-	 *
-	 * @see development/features/lembur/lembur_existing_flow.md (Section 10)
-	 *
-	 * @param  \Illuminate\Database\Eloquent\Builder  $query
-	 * @param  User  $user
-	 * @return void
-	 */
-	private function applyApprovalVisibility($query, User $user): void
-	{
-		$assignedKaryawanIdsByClient = LemburApprovalConfigAssignment::query()
-			->where('is_active', true)
-			->whereHas('config.steps', function ($stepQuery) use ($user) {
-				$stepQuery->where('approver_user_id', $user->id);
-			})
-			->get(['karyawan_id', 'client_id'])
-			->groupBy('client_id');
-
-		$query->where(function ($query) use ($user, $assignedKaryawanIdsByClient) {
-			$query->where(function ($q) use ($user) {
-				$q->whereNotNull('approval_config_id')
-					->whereHas('approvalConfig.steps', function ($stepQuery) use ($user) {
-						$stepQuery->where('approver_user_id', $user->id);
-					});
-			});
-
-			foreach ($assignedKaryawanIdsByClient as $clientId => $rows) {
-				$query->orWhere(function ($q) use ($clientId, $rows) {
-					$q->whereNull('approval_config_id')
-						->where('client_id', $clientId)
-						->whereIn('user_id', $rows->pluck('karyawan_id'));
-				});
-			}
-		});
-	}
 }

@@ -43,12 +43,20 @@
         </div>
     </div>
 
+    @php
+        $isRecapped = $existingRekap && $existingRekap->status === 'approved';
+    @endphp
+
     @if($existingRekap)
         <div class="alert alert-{{ $existingRekap->status === 'approved' ? 'success' : 'warning' }} alert-dismissible">
             <i class="icon fas fa-{{ $existingRekap->status === 'approved' ? 'check' : 'exclamation-triangle' }}"></i>
             Rekap untuk periode <strong>{{ $periodStart->translatedFormat('F Y') }}</strong>
             sudah ada dengan status <strong>{{ strtoupper($existingRekap->status) }}</strong>.
-            Jika Anda menyetujui kembali, data rekap lama akan ditimpa.
+            @if($isRecapped)
+                Data yang sudah direkap tidak bisa di-reject atau di-request perubahan.
+            @else
+                Jika Anda menyetujui kembali, data rekap lama akan ditimpa.
+            @endif
         </div>
     @endif
 
@@ -123,17 +131,19 @@
                                         onclick="showLemburDetail({{ $l->id }})">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    @if($l->status === 'approved')
-                                        <button type="button" class="btn btn-sm btn-warning" title="Request Update"
-                                            onclick="openRequestUpdateModal({{ $l->id }})">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
-                                    @endif
-                                    @if($l->status === 'waiting_approval' || $l->status === 'approved')
-                                        <button type="button" class="btn btn-sm btn-danger" title="Reject"
-                                            onclick="rejectLemburRow({{ $l->id }})">
-                                            <i class="fas fa-times-circle"></i>
-                                        </button>
+                                    @if(!$isRecapped)
+                                        @if($l->status === 'approved')
+                                            <button type="button" class="btn btn-sm btn-warning" title="Request Update"
+                                                onclick="openRequestUpdateModal({{ $l->id }})">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        @endif
+                                        @if($l->status === 'waiting_approval' || $l->status === 'approved')
+                                            <button type="button" class="btn btn-sm btn-danger" title="Reject"
+                                                onclick="rejectLemburRow({{ $l->id }})">
+                                                <i class="fas fa-times-circle"></i>
+                                            </button>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
@@ -153,7 +163,7 @@
                         @csrf
                         <input type="hidden" name="month" value="{{ $month }}">
                         <button type="submit" name="action" value="approve" class="btn btn-success"
-                            onclick="return confirm('Approve rekap lembur bulan {{ $periodStart->translatedFormat('F Y') }}? Total: Rp {{ number_format($totalPay, 0, '.', '.') }}')">
+                            onclick="return confirm('Approve rekap lembur bulan {{ $periodStart->translatedFormat('F Y') }}? Total: Rp {{ number_format($totalPay, 0, '.', '.') }}\n\nPeringatan: setelah di-approve, data yang sudah direkap tidak bisa di-reject atau di-request perubahan.')">
                             <i class="fas fa-check-circle"></i> Approve Rekap
                         </button>
                     </form>
