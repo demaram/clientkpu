@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Datatables\PiketDatatable;
 use App\Http\Controllers\Controller;
+use App\Models\LemburApprovalConfig;
 use App\Models\LemburKaryawan;
 use App\Services\LemburKaryawanDetailService;
 use App\Services\LemburKaryawanWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 
 class PiketController extends Controller
@@ -29,6 +31,9 @@ class PiketController extends Controller
     /**
      * Render the piket listing page or return DataTables JSON for AJAX requests.
      *
+     * Passes $showOvertimePay flag so recap users can see financial data while
+     * step-only approvers cannot.
+     *
      * @param  Request        $request
      * @param  PiketDatatable $datatable
      * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
@@ -39,7 +44,12 @@ class PiketController extends Controller
             return $datatable->render($request);
         }
 
-        return view('admin.piket.index');
+        $userId = Auth::id() ?? data_get(Session::get('user'), 'id');
+        $showOvertimePay = $userId
+            ? LemburApprovalConfig::where('recap_user_id', $userId)->exists()
+            : false;
+
+        return view('admin.piket.index', compact('showOvertimePay'));
     }
 
     /**

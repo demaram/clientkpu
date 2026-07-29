@@ -25,112 +25,118 @@
         </div>
     </div>
 
-    <h5 class="mt-3 mb-2">Lembur</h5>
     <div class="row">
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-warning">
-                <div class="inner">
-                    <h3>{{ $lemburCounts['pending'] ?? 0 }}</h3>
-                    <p>On Process</p>
+        <div class="col-md-6">
+            <h5 class="mt-3 mb-2">Lembur</h5>
+            <div class="row">
+                <div class="col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ $lemburCounts['pending'] ?? 0 }}</h3>
+                            <p>On Process</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-clock"></i>
+
+                <div class="col-6">
+                    <div class="small-box bg-secondary">
+                        <div class="inner">
+                            <h3>{{ $lemburCounts['waiting_approval'] ?? 0 }}</h3>
+                            <p>Waiting Approval</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+
+                <div class="col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ $lemburCounts['approved'] ?? 0 }}</h3>
+                            <p>Approved</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3>{{ $lemburCounts['rejected'] ?? 0 }}</h3>
+                            <p>Rejected</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-secondary">
-                <div class="inner">
-                    <h3>{{ $lemburCounts['waiting_approval'] ?? 0 }}</h3>
-                    <p>Waiting Approval</p>
+        <div class="col-md-6">
+            <h5 class="mt-3 mb-2">Piket</h5>
+            <div class="row">
+                <div class="col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ $piketCounts['pending'] ?? 0 }}</h3>
+                            <p>On Process</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
 
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-success">
-                <div class="inner">
-                    <h3>{{ $lemburCounts['approved'] ?? 0 }}</h3>
-                    <p>Approved</p>
+                <div class="col-6">
+                    <div class="small-box bg-secondary">
+                        <div class="inner">
+                            <h3>{{ $piketCounts['waiting_approval'] ?? 0 }}</h3>
+                            <p>Waiting Approval</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
 
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-danger">
-                <div class="inner">
-                    <h3>{{ $lemburCounts['rejected'] ?? 0 }}</h3>
-                    <p>Rejected</p>
+                <div class="col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ $piketCounts['approved'] ?? 0 }}</h3>
+                            <p>Approved</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <a href="{{ route('admin.lembur.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-    </div>
 
-    <h5 class="mt-3 mb-2">Piket</h5>
-    <div class="row">
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-warning">
-                <div class="inner">
-                    <h3>{{ $piketCounts['pending'] ?? 0 }}</h3>
-                    <p>On Process</p>
+                <div class="col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3>{{ $piketCounts['rejected'] ?? 0 }}</h3>
+                            <p>Rejected</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-secondary">
-                <div class="inner">
-                    <h3>{{ $piketCounts['waiting_approval'] ?? 0 }}</h3>
-                    <p>Waiting Approval</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-success">
-                <div class="inner">
-                    <h3>{{ $piketCounts['approved'] ?? 0 }}</h3>
-                    <p>Approved</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-danger">
-                <div class="inner">
-                    <h3>{{ $piketCounts['rejected'] ?? 0 }}</h3>
-                    <p>Rejected</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <a href="{{ route('admin.piket.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
             </div>
         </div>
     </div>
