@@ -25,11 +25,13 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <h5 class="mt-3 mb-2">Lembur</h5>
+    <div class="card card-outline card-warning mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Lembur</h3>
+        </div>
+        <div class="card-body">
             <div class="row">
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-warning">
                         <div class="inner">
                             <h3>{{ $lemburCounts['pending'] ?? 0 }}</h3>
@@ -42,7 +44,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-secondary">
                         <div class="inner">
                             <h3>{{ $lemburCounts['waiting_approval'] ?? 0 }}</h3>
@@ -55,7 +57,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-success">
                         <div class="inner">
                             <h3>{{ $lemburCounts['approved'] ?? 0 }}</h3>
@@ -68,7 +70,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-danger">
                         <div class="inner">
                             <h3>{{ $lemburCounts['rejected'] ?? 0 }}</h3>
@@ -82,11 +84,15 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-md-6">
-            <h5 class="mt-3 mb-2">Piket</h5>
+    <div class="card card-outline card-info mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Piket</h3>
+        </div>
+        <div class="card-body">
             <div class="row">
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-warning">
                         <div class="inner">
                             <h3>{{ $piketCounts['pending'] ?? 0 }}</h3>
@@ -99,7 +105,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-secondary">
                         <div class="inner">
                             <h3>{{ $piketCounts['waiting_approval'] ?? 0 }}</h3>
@@ -112,7 +118,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-success">
                         <div class="inner">
                             <h3>{{ $piketCounts['approved'] ?? 0 }}</h3>
@@ -125,7 +131,7 @@
                     </div>
                 </div>
 
-                <div class="col-6">
+                <div class="col-lg-3 col-6">
                     <div class="small-box bg-danger">
                         <div class="inner">
                             <h3>{{ $piketCounts['rejected'] ?? 0 }}</h3>
