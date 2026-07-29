@@ -125,6 +125,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script>
+        const showOvertimePay = {{ $showOvertimePay ? 'true' : 'false' }};
+
         $(document).ready(function() {
             $('#filterDateRange').daterangepicker({
                 autoUpdateInput: false,
@@ -201,7 +203,7 @@
                     {data: 'counted_hours', name: 'counted_hours'},
                     {data: 'alasan', name: 'alasan'},
                     {data: 'status_badge', name: 'status'},
-                    {data: 'overtime_pay', name: 'overtime_pay'},
+                    {data: 'overtime_pay', name: 'overtime_pay', visible: showOvertimePay},
                     {data: 'action', name: 'action', orderable: false, searchable: false}
                 ],
                 language: {
