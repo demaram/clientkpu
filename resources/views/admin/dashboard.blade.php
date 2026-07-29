@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <div class="card card-outline card-warning mb-3">
+    <div class="card card-primary mt-3 mb-3">
         <div class="card-header">
             <h3 class="card-title">Lembur</h3>
         </div>
@@ -86,7 +86,7 @@
         </div>
     </div>
 
-    <div class="card card-outline card-info mb-3">
+    <div class="card card-primary mb-3">
         <div class="card-header">
             <h3 class="card-title">Piket</h3>
         </div>
