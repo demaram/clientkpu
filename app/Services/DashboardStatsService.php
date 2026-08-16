@@ -95,18 +95,19 @@ class DashboardStatsService
     }
 
     /**
-     * Monthly SUM(total_pay) of approved lembur rekap records for the
-     * trailing 12 months (the "recap layer" chart).
+     * Monthly SUM(total_pay) of approved lembur/piket rekap records for the
+     * trailing 12 months (the "recap layer" charts).
      *
      * @param  int[]  $clientIds
+     * @param  string  $type  'lembur' or 'piket'
      * @return array{labels: string[], values: float[]}
      */
-    public function totalPaySeries(array $clientIds): array
+    public function totalPaySeries(array $clientIds, string $type = 'lembur'): array
     {
         $months = $this->trailingMonths();
 
         $totals = LemburRekap::query()
-            ->where('type', 'lembur')
+            ->where('type', $type)
             ->whereIn('client_id', $clientIds)
             ->where('status', 'approved')
             ->whereBetween('period_start', [$this->periodStartFor($months[0]), $this->periodEndFor(end($months))])

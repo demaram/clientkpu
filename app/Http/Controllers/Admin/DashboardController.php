@@ -17,11 +17,13 @@ class DashboardController extends Controller
      * Lembur and Piket status counts are scoped to rows the logged-in user
      * can actually approve (same rule as LemburDatatable/PiketDatatable) and
      * to the selected month/year filter (defaults to the current month).
+     * These status cards are hidden entirely for recap users, who approve
+     * nothing and only care about the total-pay charts below.
      *
-     * Three monthly charts always cover a fixed trailing 12-month window,
+     * Four monthly charts always cover a fixed trailing 12-month window,
      * independent of the month/year filter, and are each shown only to users
-     * relevant to that layer: step-1 approvers, step-2 approvers, and recap
-     * users respectively.
+     * relevant to that layer: step-1 approvers, step-2 approvers, and (the
+     * two total-pay charts) recap users.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \App\Services\DashboardStatsService  $stats
@@ -44,9 +46,10 @@ class DashboardController extends Controller
         $isStep2Approver = $stats->isApproverAtStep(2, $clientIds, $user);
         $chartLayer2Data = $isStep2Approver ? $stats->layerSubmissionSeries(2, $clientIds, $user) : null;
 
-        // --- Layer 3 chart: total pay per month (recap users only) ---
-        $isRecapUser = (bool) Session::get('is_recap_user', false);
-        $chartData   = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds) : null;
+        // --- Layer 3 charts: total pay per month (recap users only) ---
+        $isRecapUser     = (bool) Session::get('is_recap_user', false);
+        $chartData       = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds, 'lembur') : null;
+        $chartPiketData  = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds, 'piket') : null;
 
         return view('admin.dashboard', compact(
             'user',
@@ -58,7 +61,8 @@ class DashboardController extends Controller
             'isStep2Approver',
             'chartLayer2Data',
             'isRecapUser',
-            'chartData'
+            'chartData',
+            'chartPiketData'
         ));
     }
 
