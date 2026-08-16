@@ -15,6 +15,7 @@
         </div>
     @endif
 
+    @unless($isRecapUser)
     <div class="row">
         <div class="col-md-12">
             <form method="GET" action="{{ route('admin.dashboard') }}" class="form-inline">
@@ -25,7 +26,6 @@
         </div>
     </div>
 
-    @unless($isRecapUser)
     <div class="card card-primary mt-3 mb-3">
         <div class="card-header">
             <h3 class="card-title">Lembur</h3>
