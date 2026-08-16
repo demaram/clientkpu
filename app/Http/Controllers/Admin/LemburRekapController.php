@@ -130,7 +130,9 @@ class LemburRekapController extends Controller
         // Include waiting_approval alongside approved so the recap user can see
         // in-flight records before they try to approve the recap — see approve()
         // below, which blocks the whole recap while any of these are still pending.
-        $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid'])
+        // 'history:id,jabatan' is eager-loaded for the Pekerjaan column (same
+        // source as LemburDatatable::pekerjaan) to avoid N+1 across the month's rows.
+        $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid', 'history:id,jabatan'])
             ->where('client_id', $clientId)
             ->where('type', $this->type)
             ->whereIn('status', ['approved', 'waiting_approval'])
