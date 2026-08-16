@@ -25,6 +25,7 @@
         </div>
     </div>
 
+    @unless($isRecapUser)
     <div class="card card-primary mt-3 mb-3">
         <div class="card-header">
             <h3 class="card-title">Lembur</h3>
@@ -146,6 +147,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
     {{-- SPPD Pending Widget --}}
     @if($sppdPending > 0)
@@ -203,10 +205,11 @@
     </div>
     @endif
 
-    {{-- Monthly total-pay chart — visible to recap users only --}}
-    @if($isRecapUser && $chartData)
+    {{-- Monthly total-pay charts — visible to recap users only --}}
+    @if($isRecapUser && ($chartData || $chartPiketData))
     <div class="row">
-        <div class="col-md-12">
+        @if($chartData)
+        <div class="col-md-6">
             <div class="card card-primary">
                 <div class="card-header">
                     <h3 class="card-title">
@@ -219,6 +222,23 @@
                 </div>
             </div>
         </div>
+        @endif
+
+        @if($chartPiketData)
+        <div class="col-md-6">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        Total Piket Dibayar per Bulan
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="piketRekapChart" style="min-height: 280px;"></canvas>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
     @endif
 
@@ -305,6 +325,46 @@
                         data: {!! json_encode($chartData['values']) !!},
                         backgroundColor: 'rgba(243, 156, 18, 0.75)',
                         borderColor: 'rgba(243, 156, 18, 1)',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                callback: function (value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                return 'Rp ' + parseFloat(tooltipItem.yLabel).toLocaleString('id-ID');
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+        @endif
+
+        @if($isRecapUser && $chartPiketData)
+        (function () {
+            var ctx = document.getElementById('piketRekapChart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartPiketData['labels']) !!},
+                    datasets: [{
+                        label: 'Total Pay (Rp)',
+                        data: {!! json_encode($chartPiketData['values']) !!},
+                        backgroundColor: 'rgba(0, 166, 90, 0.75)',
+                        borderColor: 'rgba(0, 166, 90, 1)',
                         borderWidth: 1,
                     }]
                 },
