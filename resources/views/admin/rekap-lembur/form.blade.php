@@ -337,6 +337,27 @@
     <style>
         tfoot td { font-weight: bold; }
         #rekapLemburTable th, #rekapLemburTable td { white-space: nowrap; }
+
+        /* Match Select2's rendered height/alignment to Bootstrap 4 .form-control
+           (calc(2.25rem + 2px)) — no select2-bootstrap4-theme is loaded, so
+           Select2's own 28px default otherwise looks shorter than the other filters. */
+        .select2-container .select2-selection--single {
+            height: calc(2.25rem + 2px);
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+        }
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: calc(2.25rem);
+            padding-left: 0.75rem;
+            color: #495057;
+        }
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: calc(2.25rem);
+            right: 3px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__clear {
+            margin-right: 0.5rem;
+        }
     </style>
 @stop
 
@@ -440,8 +461,6 @@
             });
 
             rekapLemburTable = $('#rekapLemburTable').DataTable({
-                scrollX: true,
-                scrollCollapse: true,
                 pageLength: 25,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Semua']],
                 columnDefs: [
