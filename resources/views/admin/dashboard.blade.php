@@ -242,6 +242,25 @@
     </div>
     @endif
 
+    {{-- Same lembur money as the bar chart above, split per jenis pekerjaan --}}
+    @if($isRecapUser && $chartPekerjaanData)
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        Total Lembur Dibayar per Bulan - per Jenis Pekerjaan
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="lemburPekerjaanChart" style="min-height: 320px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
 @stop
 
 @section('css')
@@ -384,6 +403,75 @@
                         callbacks: {
                             label: function (tooltipItem) {
                                 return 'Rp ' + parseFloat(tooltipItem.yLabel).toLocaleString('id-ID');
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+        @endif
+
+        @if($isRecapUser && $chartPekerjaanData)
+        (function () {
+            var ctx = document.getElementById('lemburPekerjaanChart').getContext('2d');
+
+            // AdminLTE palette, cycled when a client has more pekerjaan than colours.
+            var palette = [
+                '#3c8dbc', '#00a65a', '#f39c12', '#dd4b39', '#605ca8',
+                '#00c0ef', '#d81b60', '#39cccc', '#ff851b', '#8e44ad'
+            ];
+
+            var series = {!! json_encode($chartPekerjaanData['datasets']) !!};
+
+            var datasets = series.map(function (s, idx) {
+                var color = s.is_unknown ? '#6c757d' : palette[idx % palette.length];
+
+                return {
+                    label: s.label,
+                    data: s.values,
+                    borderColor: color,
+                    backgroundColor: color,
+                    pointBackgroundColor: color,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    lineTension: 0.1,
+                    fill: false,
+                };
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($chartPekerjaanData['labels']) !!},
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'bottom',
+                    },
+                    hover: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                callback: function (value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (tooltipItem, data) {
+                                var name = data.datasets[tooltipItem.datasetIndex].label || '';
+
+                                return name + ': Rp ' + parseFloat(tooltipItem.yLabel).toLocaleString('id-ID');
                             }
                         }
                     }
