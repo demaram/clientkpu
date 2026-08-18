@@ -20,10 +20,10 @@ class DashboardController extends Controller
      * These status cards are hidden entirely for recap users, who approve
      * nothing and only care about the total-pay charts below.
      *
-     * Four monthly charts always cover a fixed trailing 12-month window,
+     * Five monthly charts always cover a fixed trailing 12-month window,
      * independent of the month/year filter, and are each shown only to users
      * relevant to that layer: step-1 approvers, step-2 approvers, and (the
-     * two total-pay charts) recap users.
+     * two total-pay charts plus the per-pekerjaan breakdown) recap users.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \App\Services\DashboardStatsService  $stats
@@ -51,6 +51,18 @@ class DashboardController extends Controller
         $chartData       = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds, 'lembur') : null;
         $chartPiketData  = ($isRecapUser && $clientIds) ? $stats->totalPaySeries($clientIds, 'piket') : null;
 
+        // Same lembur money as $chartData, split per jenis pekerjaan. Null (card
+        // hidden) when there is nothing to plot — an empty line chart renders as
+        // a bare grid with no legend, which reads as a bug rather than as "no data".
+        $chartPekerjaanData = ($isRecapUser && $clientIds)
+            ? $stats->totalPayByPekerjaanSeries($clientIds, 'lembur')
+            : null;
+
+        if ($chartPekerjaanData && empty($chartPekerjaanData['datasets'])) {
+            $chartPekerjaanData = null;
+        }
+
+
         return view('admin.dashboard', compact(
             'user',
             'month',
@@ -62,7 +74,8 @@ class DashboardController extends Controller
             'chartLayer2Data',
             'isRecapUser',
             'chartData',
-            'chartPiketData'
+            'chartPiketData',
+            'chartPekerjaanData',
         ));
     }
 
