@@ -40,6 +40,16 @@ class LemburKaryawan extends Model
          return $this->belongsTo('App\Models\History','karyawan_project_id');
     }
 
+    /**
+     * The project this overtime/piket record was logged against — used to
+     * resolve "Jenis Pekerjaan" via project.pekerjaan (master_pekerjaan),
+     * separate from history.jabatan which is the employee's own job title.
+     */
+    public function project()
+    {
+         return $this->belongsTo('App\Models\Project','project_id');
+    }
+
     public function user()
     {
           return $this->belongsTo('App\Models\Karyawan','user_id');
