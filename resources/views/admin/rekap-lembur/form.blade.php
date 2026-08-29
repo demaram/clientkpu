@@ -70,9 +70,13 @@
                     $karyawanOptions = $lemburs->map(function ($l) {
                         return $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : null;
                     })->filter()->unique()->sort()->values();
+
+                    $jenisPekerjaanOptions = $lemburs->map(function ($l) {
+                        return $l->project?->pekerjaan?->nama;
+                    })->filter()->unique()->sort()->values();
                 @endphp
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="filterNama">Nama Karyawan</label>
                             <select id="filterNama" class="form-control" style="width:100%">
@@ -83,7 +87,18 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="filterJenisPekerjaan">Jenis Pekerjaan</label>
+                            <select id="filterJenisPekerjaan" class="form-control">
+                                <option value="">Semua Jenis Pekerjaan</option>
+                                @foreach($jenisPekerjaanOptions as $jenis)
+                                    <option value="{{ $jenis }}">{{ $jenis }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="form-group">
                             <label for="filterDateRange">Range Waktu</label>
                             <input type="text" id="filterDateRange" class="form-control" placeholder="Pilih range waktu" autocomplete="off" />
@@ -91,7 +106,7 @@
                             <input type="hidden" id="filterEnd" />
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="form-group">
                             <label for="filterStatus">Status</label>
                             <select id="filterStatus" class="form-control">
@@ -130,6 +145,7 @@
                                 <th>Nama Karyawan</th>
                                 <th>EmpID</th>
                                 <th>Pekerjaan</th>
+                                <th>Jenis Pekerjaan</th>
                                 <th>Tanggal</th>
                                 <th>Jam Mulai</th>
                                 <th>Jam Selesai</th>
@@ -149,12 +165,14 @@
                                 data-nama="{{ $namaKaryawan }}"
                                 data-status="{{ $l->status }}"
                                 data-start="{{ $l->start }}"
-                                data-overtime-pay="{{ $l->overtime_pay ?? 0 }}">
+                                data-overtime-pay="{{ $l->overtime_pay ?? 0 }}"
+                                data-jenis-pekerjaan="{{ $l->project?->pekerjaan?->nama }}">
                                 <td>{{ $i + 1 }}</td>
                                 <td>{{ $l->kode }}</td>
                                 <td>{{ $namaKaryawan }}</td>
                                 <td>{{ $l->user->empid ?? '-' }}</td>
                                 <td>{{ $l->history->jabatan ?? '-' }}</td>
+                                <td>{{ $l->project?->pekerjaan?->nama ?? '-' }}</td>
                                 <td data-order="{{ strtotime($l->start) }}">{{ date('d/m/Y', strtotime($l->start)) }}</td>
                                 <td data-order="{{ strtotime($l->start) }}">{{ date('H:i', strtotime($l->start)) }}</td>
                                 <td data-order="{{ $l->end ? strtotime($l->end) : 0 }}">{{ $l->end ? date('H:i', strtotime($l->end)) : '-' }}</td>
@@ -206,7 +224,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-success">
-                                <td colspan="10" class="text-right font-weight-bold">Total Overtime Pay:</td>
+                                <td colspan="11" class="text-right font-weight-bold">Total Overtime Pay:</td>
                                 <td colspan="2" class="font-weight-bold text-success" id="footerTotalPay">Rp {{ number_format($totalPay, 0, ',', '.') }}</td>
                             </tr>
                         </tfoot>
@@ -436,11 +454,16 @@
 
                 var row = $(rekapLemburTable.row(index).node());
                 var namaFilter = $('#filterNama').val();
+                var jenisPekerjaanFilter = $('#filterJenisPekerjaan').val();
                 var statusFilter = $('#filterStatus').val();
                 var startFilter = $('#filterStart').val();
                 var endFilter = $('#filterEnd').val();
 
                 if (namaFilter && row.data('nama') !== namaFilter) {
+                    return false;
+                }
+
+                if (jenisPekerjaanFilter && String(row.data('jenis-pekerjaan')) !== jenisPekerjaanFilter) {
                     return false;
                 }
 
@@ -464,9 +487,9 @@
                 pageLength: 25,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Semua']],
                 columnDefs: [
-                    { targets: [0, 11], orderable: false, searchable: false }
+                    { targets: [0, 12], orderable: false, searchable: false }
                 ],
-                order: [[5, 'asc']],
+                order: [[6, 'asc']],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json'
                 },
@@ -498,6 +521,7 @@
 
             $('#btnResetFilter').on('click', function() {
                 $('#filterNama').val(null).trigger('change');
+                $('#filterJenisPekerjaan').val('');
                 $('#filterDateRange').val('');
                 $('#filterStart').val('');
                 $('#filterEnd').val('');
@@ -506,6 +530,10 @@
             });
 
             $('#filterStatus').on('change', function() {
+                rekapLemburTable.draw();
+            });
+
+            $('#filterJenisPekerjaan').on('change', function() {
                 rekapLemburTable.draw();
             });
 

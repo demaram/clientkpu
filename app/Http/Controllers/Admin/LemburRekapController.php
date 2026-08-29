@@ -132,7 +132,9 @@ class LemburRekapController extends Controller
         // below, which blocks the whole recap while any of these are still pending.
         // 'history:id,jabatan' is eager-loaded for the Pekerjaan column (same
         // source as LemburDatatable::pekerjaan) to avoid N+1 across the month's rows.
-        $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid', 'history:id,jabatan'])
+        // 'project.pekerjaan' is eager-loaded for the Jenis Pekerjaan column —
+        // same project -> master_pekerjaan chain the recap dashboard chart uses.
+        $lemburs = LemburKaryawan::with(['user:id,first_name,last_name,empid', 'history:id,jabatan', 'project.pekerjaan'])
             ->where('client_id', $clientId)
             ->where('type', $this->type)
             ->whereIn('status', ['approved', 'waiting_approval'])
