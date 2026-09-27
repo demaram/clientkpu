@@ -57,6 +57,7 @@ class SppdController extends Controller
 
         $sppd = Sppd::with([
             'karyawan',
+            'karyawanProject',
             'approvalConfig.steps',
             'costs',
             'attachments',
@@ -119,7 +120,7 @@ class SppdController extends Controller
                 'kode'                 => $sppd->kode,
                 'karyawan'             => $karyawan ? trim($karyawan->first_name . ' ' . $karyawan->last_name) : '-',
                 'empid'                => $karyawan?->empid ?? '-',
-                'jabatan'              => $karyawan?->jabatan ?? '-',
+                'jabatan'              => $sppd->karyawanProject?->jabatan ?? '-',
                 'lokasi'               => $sppd->lokasi ?? $sppd->tujuan ?? '-',
                 'keterangan'           => $sppd->keterangan ?? '-',
                 'tanggal_berangkat'    => $sppd->tanggal_berangkat ? date('d/m/Y', strtotime($sppd->tanggal_berangkat)) : '-',

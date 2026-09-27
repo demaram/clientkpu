@@ -61,11 +61,7 @@ class SppdDatatable
                 return $row->tanggal_kembali ? date('d/m/Y', strtotime($row->tanggal_kembali)) : '-';
             })
             ->addColumn('durasi', function (Sppd $row) {
-                if (!$row->tanggal_berangkat || !$row->tanggal_kembali) {
-                    return '-';
-                }
-                $diff = (int) ceil((strtotime($row->tanggal_kembali) - strtotime($row->tanggal_berangkat)) / 86400) + 1;
-                return $diff . ' hari';
+                return $row->durasi !== null ? $row->durasi . ' hari' : '-';
             })
             ->addColumn('status_badge', function (Sppd $row) {
                 if ($row->status === 'waiting_approval' && $row->approval_config_id && $row->approvalConfig) {
