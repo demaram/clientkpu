@@ -11,11 +11,23 @@ class Sppd extends Model
     protected $guarded = [];
 
     /**
+     * The karyawan who filed this SPPD. The `sppd` table links them through `user_id`.
+     *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function karyawan()
     {
-        return $this->belongsTo(User::class, 'karyawan_id');
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * The karyawan's project placement this SPPD was filed under (holds their jabatan).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function karyawanProject()
+    {
+        return $this->belongsTo(History::class, 'karyawan_project_id');
     }
 
     /**
