@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
 class SppdApprovalLog extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'sppd_approval_logs';
 
     public $timestamps = false;

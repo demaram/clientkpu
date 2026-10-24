@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class SppdAttachment extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'sppd_attachments';
 
     protected $guarded = [];
