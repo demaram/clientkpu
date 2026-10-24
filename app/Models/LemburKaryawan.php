@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Client;
 
 class LemburKaryawan extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'lembur_karyawan_project';
 
     protected $fillable = [

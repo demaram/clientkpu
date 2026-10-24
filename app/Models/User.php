@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -11,6 +12,8 @@ use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
+    use SoftDeletes;
+
 
     /** Per-request role cache — avoids repeated DB queries when file cache driver can't use tags. */
     private ?Collection $rolesCache = null;

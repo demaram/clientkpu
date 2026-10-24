@@ -78,6 +78,7 @@ class SppdKaryawanInfoTest extends TestCase
             $table->string('empid')->nullable();
             $table->integer('id_client')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('user_client_access', function (Blueprint $table) {
@@ -95,6 +96,7 @@ class SppdKaryawanInfoTest extends TestCase
             $table->integer('id')->primary();
             $table->integer('karyawan_id')->nullable();
             $table->string('jabatan')->nullable();
+            $table->softDeletes();
         });
 
         Schema::create('sppd', function (Blueprint $table) {

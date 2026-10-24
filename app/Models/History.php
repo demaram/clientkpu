@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
 class History extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'karyawan_project';
 
     public $timestamps = false;

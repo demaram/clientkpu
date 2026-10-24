@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
 class Cuti extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'cuti_karyawan';
 
     protected $fillable = ['karyawan_id','start','end','tipe','alasan'];
