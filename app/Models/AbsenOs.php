@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
 class AbsenOs extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'absen_os';
 
     protected $fillable = ['bulan','karyawan_project_id','masuk'];

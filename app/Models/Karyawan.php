@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Role;
 use Illuminate\Support\Facades\DB;
 class Karyawan extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'users';
 
     protected $fillable = ['status'];
@@ -117,9 +120,9 @@ class Karyawan extends Model
                     $q->where('name', 'karyawan');
                }])
                ->with('changeRequest')
-               ->leftJoin('karyawan_project', 'users.id', '=', 'karyawan_project.karyawan_id')
-               ->leftJoin('project', 'karyawan_project.project_id', '=', 'project.id')
-               ->leftJoin('spk', 'project.spk_id', '=', 'spk.id')
+               ->leftJoin('karyawan_project', fn ($j) => $j->on('users.id', '=', 'karyawan_project.karyawan_id')->whereNull('karyawan_project.deleted_at'))
+               ->leftJoin('project', fn ($j) => $j->on('karyawan_project.project_id', '=', 'project.id')->whereNull('project.deleted_at'))
+               ->leftJoin('spk', fn ($j) => $j->on('project.spk_id', '=', 'spk.id')->whereNull('spk.deleted_at'))
                ->leftJoin('client', 'spk.client_id', '=', 'client.id')
                ->select('users.id', 'users.first_name', 'users.last_name', 'users.no_rekening',
                        'users.empid', 'users.is_active', 'users.is_approve', 'users.detail',

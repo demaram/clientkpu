@@ -58,11 +58,13 @@ class DashboardStatsServicePekerjaanSeriesTest extends TestCase
             $table->integer('id')->primary();
             $table->integer('master_pekerjaan_id')->nullable();
             $table->string('nama')->nullable();
+            $table->softDeletes();
         });
 
         Schema::create('lembur_karyawan_project', function (Blueprint $table) {
             $table->integer('id')->primary();
             $table->integer('project_id')->nullable();
+            $table->softDeletes();
         });
 
         Schema::create('lembur_rekap', function (Blueprint $table) {
@@ -176,6 +178,28 @@ class DashboardStatsServicePekerjaanSeriesTest extends TestCase
         $this->assertSame(['Driver', 'Office Boy'], array_keys($values));
         $this->assertSame(1500.0, end($values['Driver']));
         $this->assertSame(250.0, end($values['Office Boy']));
+    }
+
+    /**
+     * Lembur yang sudah menjadi Data Terhapus tidak ikut dijumlahkan, sama seperti
+     * ketika hard delete membuat join ke lembur itu kosong (ADR 0003).
+     */
+    public function test_ignores_lembur_that_has_been_soft_deleted(): void
+    {
+        $thisMonth = Carbon::now()->startOfMonth();
+
+        $this->seedRekap($thisMonth, [
+            ['project_id' => 10, 'pay' => 1000],
+            ['project_id' => 10, 'pay' => 700],
+        ]);
+
+        DB::table('lembur_karyawan_project')
+            ->where('id', $this->nextLemburId - 1)
+            ->update(['deleted_at' => now()]);
+
+        $values = $this->valuesByLabel($this->service()->totalPayByPekerjaanSeries([self::CLIENT_ID]));
+
+        $this->assertSame(1000.0, end($values['Driver']));
     }
 
     public function test_covers_twelve_months_and_fills_empty_months_with_zero(): void

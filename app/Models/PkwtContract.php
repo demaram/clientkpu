@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 /** @package App\Models */
 class PkwtContract extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'pkwt_contracts';
 
@@ -65,8 +66,15 @@ class PkwtContract extends Model
      */
     private $disk;
 
-    public function __construct()
+    /**
+     * Wajib memanggil parent agar boot() (global scope soft delete) berjalan.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function __construct(array $attributes = [])
     {
+        parent::__construct($attributes);
+
         $this->disk = Storage::disk('custom_public');
     }
 
