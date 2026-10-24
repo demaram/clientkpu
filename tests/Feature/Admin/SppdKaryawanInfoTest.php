@@ -112,6 +112,7 @@ class SppdKaryawanInfoTest extends TestCase
             $table->integer('durasi');
             $table->string('status')->default('waiting_approval');
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('sppd_approval_configs', function (Blueprint $table) {
@@ -130,11 +131,13 @@ class SppdKaryawanInfoTest extends TestCase
             $table->integer('sppd_id');
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->boolean('diterima_pegawai')->default(false);
+            $table->softDeletes();
         });
 
         Schema::create('sppd_attachments', function (Blueprint $table) {
             $table->integer('id')->primary();
             $table->integer('sppd_id');
+            $table->softDeletes();
         });
 
         Schema::create('sppd_approval_logs', function (Blueprint $table) {
@@ -142,6 +145,7 @@ class SppdKaryawanInfoTest extends TestCase
             $table->integer('sppd_id');
             $table->integer('step_order')->nullable();
             $table->string('status')->nullable();
+            $table->softDeletes();
         });
     }
 
