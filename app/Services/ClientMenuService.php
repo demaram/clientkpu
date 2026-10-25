@@ -11,8 +11,8 @@ class ClientMenuService
     /**
      * Build the full sidebar menu array for the current user.
      *
-     * Rekap Lembur is appended only when the user is a recap_user_id on any
-     * lembur_approval_configs. The ClientRoleMenuFilter in adminlte.php also
+     * Rekap Lembur / Rekap Piket / Report SPPD are appended only when the user is a
+     * recap_user_id on any lembur_approval_configs. The ClientRoleMenuFilter in adminlte.php also
      * hides Lembur/Piket/SPPD for recap users; this service is kept for
      * any programmatic menu overrides.
      *
@@ -70,6 +70,11 @@ class ClientMenuService
                 'text' => 'Rekap Piket',
                 'url'  => 'admin/rekap-piket',
                 'icon' => 'fas fa-fw fa-file-invoice',
+            ];
+            $menus[] = [
+                'text' => 'Report SPPD',
+                'url'  => 'admin/report-sppd',
+                'icon' => 'fas fa-fw fa-plane',
             ];
         }
 

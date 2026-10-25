@@ -74,6 +74,32 @@ class Sppd extends Model
     }
 
     /**
+     * Scope to the SPPD of karyawan currently assigned to a Konfigurasi Lembur whose Perekap Lembur is this user.
+     *
+     * A config limited to a project only covers SPPD filed under that project. Karyawan who are not assigned
+     * to any config, or whose assignment ended, are not covered.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  int  $userId  The Perekap Lembur's user id
+     */
+    public function scopeCoveredByRecapUser($query, int $userId)
+    {
+        return $query->whereExists(function ($sub) use ($userId) {
+            $sub->selectRaw('1')
+                ->from('lembur_approval_config_assignments as lca')
+                ->join('lembur_approval_configs as lac', 'lac.id', '=', 'lca.lembur_approval_config_id')
+                ->whereColumn('lca.karyawan_id', 'sppd.user_id')
+                ->whereColumn('lca.client_id', 'sppd.client_id')
+                ->where('lca.is_active', true)
+                ->where('lac.recap_user_id', $userId)
+                ->where(function ($project) {
+                    $project->whereNull('lac.project_id')
+                        ->orWhereColumn('lac.project_id', 'sppd.project_id');
+                });
+        });
+    }
+
+    /**
      * Scope to a specific client.
      *
      * @param  \Illuminate\Database\Eloquent\Builder  $query
