@@ -70,7 +70,7 @@ class Sppd extends Model
      */
     public function approvalLogs()
     {
-        return $this->hasMany(SppdApprovalLog::class, 'sppd_id');
+        return $this->hasMany(SppdApprovalLog::class, 'sppd_id')->orderBy('acted_at')->orderBy('id');
     }
 
     /**

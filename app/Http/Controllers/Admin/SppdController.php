@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Sppd;
 use App\Models\SppdApprovalConfigStep;
 use App\Models\User;
+use App\Services\SppdDetailPresenter;
 use App\Services\SubscriptionCipherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,12 +18,16 @@ class SppdController extends Controller
 {
     protected SubscriptionCipherService $subscriptionCipher;
 
+    protected SppdDetailPresenter $detailPresenter;
+
     /**
      * @param  SubscriptionCipherService  $subscriptionCipher
+     * @param  SppdDetailPresenter  $detailPresenter
      */
-    public function __construct(SubscriptionCipherService $subscriptionCipher)
+    public function __construct(SubscriptionCipherService $subscriptionCipher, SppdDetailPresenter $detailPresenter)
     {
         $this->subscriptionCipher = $subscriptionCipher;
+        $this->detailPresenter    = $detailPresenter;
     }
 
     /**
@@ -55,94 +60,15 @@ class SppdController extends Controller
         $user      = Auth::user();
         $clientIds = $user?->accessibleClientIds() ?? [];
 
-        $sppd = Sppd::with([
-            'karyawan',
-            'karyawanProject',
-            'approvalConfig.steps',
-            'costs',
-            'attachments',
-            'approvalLogs',
-        ])->findOrFail($id);
+        $sppd = Sppd::with(SppdDetailPresenter::relations())->findOrFail($id);
 
         if ($clientIds && !in_array($sppd->client_id, $clientIds)) {
             abort(403, 'Unauthorized access');
         }
 
-        // Determine step progress
-        $stepProgress = null;
-        $canAct       = false;
-        if ($sppd->approval_config_id && $sppd->approvalConfig) {
-            $totalSteps   = $sppd->approvalConfig->steps->count();
-            $stepProgress = $sppd->current_approval_step . '/' . $totalSteps;
-
-            if ($sppd->status === 'waiting_approval') {
-                $step   = $sppd->approvalConfig->steps
-                    ->where('step_order', $sppd->current_approval_step)
-                    ->first();
-                $canAct = $step && $step->actor_type === 'client';
-            }
-        }
-
-        // Most recent rejection log
-        $rejectionLog = $sppd->approvalLogs
-            ->where('status', 'rejected')
-            ->sortByDesc('step_order')
-            ->first();
-
-        // Cost totals
-        $totalBiaya         = $sppd->costs->sum('subtotal');
-        $totalDiterimaPegawai = $sppd->costs->where('diterima_pegawai', true)->sum('subtotal');
-
-        // Map attachments
-        $attachments = $sppd->attachments->map(fn ($att) => [
-            'id'        => $att->id,
-            'jenis'     => $att->jenis,
-            'file_name' => $att->file_name,
-            'url'       => $att->url,
-        ])->values();
-
-        // Map approval logs
-        $logs = $sppd->approvalLogs->map(fn ($log) => [
-            'step_order'  => $log->step_order,
-            'step_name'   => $log->step_name,
-            'status'      => $log->status,
-            'notes'       => $log->notes,
-            'acted_from'  => $log->acted_from,
-            'acted_at'    => $log->acted_at ? $log->acted_at->format('d/m/Y H:i') : '-',
-        ])->values();
-
-        $karyawan = $sppd->karyawan;
-
         return response()->json([
             'success' => true,
-            'data'    => [
-                'id'                   => $sppd->id,
-                'kode'                 => $sppd->kode,
-                'karyawan'             => $karyawan ? trim($karyawan->first_name . ' ' . $karyawan->last_name) : '-',
-                'empid'                => $karyawan?->empid ?? '-',
-                'jabatan'              => $sppd->karyawanProject?->jabatan ?? '-',
-                'lokasi'               => $sppd->lokasi ?? $sppd->tujuan ?? '-',
-                'keterangan'           => $sppd->keterangan ?? '-',
-                'tanggal_berangkat'    => $sppd->tanggal_berangkat ? date('d/m/Y', strtotime($sppd->tanggal_berangkat)) : '-',
-                'tanggal_kembali'      => $sppd->tanggal_kembali ? date('d/m/Y', strtotime($sppd->tanggal_kembali)) : '-',
-                'status'               => $sppd->status,
-                'step_progress'        => $stepProgress,
-                'can_act'              => $canAct,
-                'rejection_notes'      => $sppd->status === 'rejected'
-                    ? ($rejectionLog ? ($rejectionLog->notes ?? '-') : '-')
-                    : null,
-                'total_biaya'          => 'Rp ' . number_format($totalBiaya, 0, ',', '.'),
-                'total_diterima_pegawai' => 'Rp ' . number_format($totalDiterimaPegawai, 0, ',', '.'),
-                'costs'                => $sppd->costs->map(fn ($c) => [
-                    'uraian'           => $c->uraian,
-                    'nominal'          => number_format($c->nominal ?? 0, 0, ',', '.'),
-                    'hari'             => $c->hari,
-                    'subtotal'         => number_format($c->subtotal ?? 0, 0, ',', '.'),
-                    'diterima_pegawai' => (bool) $c->diterima_pegawai,
-                ])->values(),
-                'attachments'          => $attachments,
-                'approval_logs'        => $logs,
-            ],
+            'data'    => $this->detailPresenter->present($sppd, true),
         ]);
     }
 
