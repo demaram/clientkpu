@@ -3,7 +3,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="detailModalLabel">
-                    <i class="fas fa-plane"></i> Detail SPPD &mdash; <span id="detail-kode"></span>
+                    <i class="fas fa-plane"></i> Detail SPPD &mdash; <span id="detail-kode-title"></span>
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
