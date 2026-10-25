@@ -2,6 +2,7 @@
 
 namespace App\Datatables;
 
+use App\Helpers\SppdStatusBadge;
 use App\Models\Sppd;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -63,20 +64,7 @@ class SppdDatatable
             ->addColumn('durasi', function (Sppd $row) {
                 return $row->durasi !== null ? $row->durasi . ' hari' : '-';
             })
-            ->addColumn('status_badge', function (Sppd $row) {
-                if ($row->status === 'waiting_approval' && $row->approval_config_id && $row->approvalConfig) {
-                    $total = $row->approvalConfig->steps->count();
-                    return '<span class="badge badge-secondary">Waiting Approval (' . $row->current_approval_step . '/' . $total . ')</span>';
-                }
-
-                $badges = [
-                    'waiting_approval' => '<span class="badge badge-secondary">Waiting Approval</span>',
-                    'approved'         => '<span class="badge badge-success">Approved</span>',
-                    'rejected'         => '<span class="badge badge-danger">Rejected</span>',
-                ];
-
-                return $badges[$row->status] ?? '<span class="badge badge-secondary">' . ucfirst($row->status) . '</span>';
-            })
+            ->addColumn('status_badge', fn (Sppd $row) => SppdStatusBadge::render($row))
             ->addColumn('action', function (Sppd $row) {
                 $buttons = '<button type="button" class="btn btn-sm btn-info" onclick="detailSppd(' . $row->id . ')" title="Detail"><i class="fas fa-eye"></i></button> ';
 

@@ -353,6 +353,12 @@ return [
             'icon' => 'fas fa-fw fa-file-invoice',
             'key'  => 'rekap-piket',
         ],
+        [
+            'text' => 'Report SPPD',
+            'url'  => 'admin/report-sppd',
+            'icon' => 'fas fa-fw fa-plane',
+            'key'  => 'report-sppd',
+        ],
     ],
 
     /*

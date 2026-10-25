@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PiketRekapController;
 use App\Http\Controllers\Admin\GantiPasswordController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SppdController;
+use App\Http\Controllers\Admin\SppdReportController;
 use App\Http\Controllers\Auth\LoginController;
 
 // Redirect root ke login
@@ -75,6 +76,12 @@ Route::prefix('admin')->middleware('client.auth')->group(function () {
         Route::get('/{id}', [SppdController::class, 'show'])->name('admin.sppd.show');
         Route::post('/{id}/approve', [SppdController::class, 'approve'])->name('admin.sppd.approve');
         Route::post('/{id}/reject', [SppdController::class, 'reject'])->name('admin.sppd.reject');
+    });
+
+    // Report SPPD (Perekap Lembur, baca-saja)
+    Route::prefix('report-sppd')->name('admin.report-sppd.')->group(function () {
+        Route::get('/', [SppdReportController::class, 'index'])->name('index');
+        Route::get('/{id}', [SppdReportController::class, 'show'])->name('show');
     });
 
     // Profile
