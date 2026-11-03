@@ -77,9 +77,11 @@
                             <tr>
                                 <th>Step</th>
                                 <th>Nama Step</th>
+                                <th>Approver</th>
                                 <th>Status</th>
                                 <th>Catatan</th>
                                 <th>Waktu</th>
+                                <th>Dari</th>
                             </tr>
                         </thead>
                         <tbody id="detail-logs-body">

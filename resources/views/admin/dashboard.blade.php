@@ -147,25 +147,68 @@
             </div>
         </div>
     </div>
-    @endunless
+    {{-- SPPD: On Process = waiting on a SIP - KPU step, Waiting Approval = waiting on a client step --}}
+    <div class="card card-primary mb-3">
+        <div class="card-header">
+            <h3 class="card-title">SPPD</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ $sppdCounts['on_process'] ?? 0 }}</h3>
+                            <p>On Process</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
 
-    {{-- SPPD Pending Widget --}}
-    @if($sppdPending > 0)
-    <div class="row">
-        <div class="col-lg-4 col-6">
-            <div class="small-box bg-warning">
-                <div class="inner">
-                    <h3>{{ $sppdPending }}</h3>
-                    <p>SPPD Menunggu Approval Anda</p>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-secondary">
+                        <div class="inner">
+                            <h3>{{ $sppdCounts['waiting_approval'] ?? 0 }}</h3>
+                            <p>Waiting Approval</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-plane"></i>
+
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ $sppdCounts['approved'] ?? 0 }}</h3>
+                            <p>Approved</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
                 </div>
-                <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">Lihat SPPD <i class="fas fa-arrow-circle-right"></i></a>
+
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3>{{ $sppdCounts['rejected'] ?? 0 }}</h3>
+                            <p>Rejected</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <a href="{{ route('admin.sppd.index') }}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    @endif
+    @endunless
 
     {{-- Layer 1 chart — visible to step-1 approvers only --}}
     @if($isStep1Approver && $chartLayer1Data)

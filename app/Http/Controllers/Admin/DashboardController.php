@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Sppd;
 use App\Services\DashboardStatsService;
+use App\Services\SppdDashboardStatsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,11 +26,16 @@ class DashboardController extends Controller
      * relevant to that layer: step-1 approvers, step-2 approvers, and (the
      * two total-pay charts plus the per-pekerjaan breakdown) recap users.
      *
+     * The SPPD status card counts every SPPD of the user's clients departing in
+     * the selected month (the same SPPD the e-SPPD list shows), split into On
+     * Process / Waiting Approval / Approved / Rejected; hidden for recap users too.
+     *
      * @param  \Illuminate\Http\Request  $request
      * @param  \App\Services\DashboardStatsService  $stats
+     * @param  \App\Services\SppdDashboardStatsService  $sppdStats
      * @return \Illuminate\View\View
      */
-    public function index(Request $request, DashboardStatsService $stats)
+    public function index(Request $request, DashboardStatsService $stats, SppdDashboardStatsService $sppdStats)
     {
         $user      = Auth::user();
         $clientIds = $user?->accessibleClientIds() ?? [];
@@ -63,17 +68,8 @@ class DashboardController extends Controller
             $chartPekerjaanData = null;
         }
 
-        // --- SPPD pending count (waiting_approval with client-step active) ---
-        $sppdPending = 0;
-        if ($clientIds) {
-            $sppdPending = Sppd::whereIn('client_id', $clientIds)
-                ->where('status', 'waiting_approval')
-                ->whereHas('approvalConfig.steps', function ($q) {
-                    $q->whereColumn('step_order', 'sppd.current_approval_step')
-                      ->where('actor_type', 'client');
-                })
-                ->count();
-        }
+        // --- SPPD card: same SPPD as the e-SPPD list, by tanggal berangkat in the period ---
+        $sppdCounts = $sppdStats->statusCounts($clientIds, $periodStart, $periodEnd);
 
         return view('admin.dashboard', compact(
             'user',
@@ -88,7 +84,7 @@ class DashboardController extends Controller
             'chartData',
             'chartPiketData',
             'chartPekerjaanData',
-            'sppdPending'
+            'sppdCounts'
         ));
     }
 

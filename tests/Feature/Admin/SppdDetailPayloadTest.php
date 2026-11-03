@@ -32,6 +32,7 @@ class SppdDetailPayloadTest extends TestCase
             $t->integer('id')->primary();
             $t->string('first_name')->nullable();
             $t->string('last_name')->nullable();
+            $t->string('name')->nullable();
             $t->string('empid')->nullable();
             $t->integer('id_client')->nullable();
             $t->timestamps();
@@ -41,6 +42,10 @@ class SppdDetailPayloadTest extends TestCase
             $t->increments('id');
             $t->integer('user_id');
             $t->integer('client_id');
+        });
+        Schema::create('client', function (Blueprint $t) {
+            $t->integer('id')->primary();
+            $t->string('nama')->nullable();
         });
         Schema::create('karyawan_project', function (Blueprint $t) {
             $t->integer('id')->primary();
@@ -97,6 +102,7 @@ class SppdDetailPayloadTest extends TestCase
             $t->integer('sppd_id');
             $t->integer('step_id')->nullable();
             $t->integer('step_order')->nullable();
+            $t->integer('approver_id')->nullable();
             $t->string('status')->nullable();
             $t->text('notes')->nullable();
             $t->dateTime('acted_at')->nullable();
@@ -106,6 +112,7 @@ class SppdDetailPayloadTest extends TestCase
 
         $this->actingAs(User::forceCreate(['id' => 900, 'first_name' => 'Admin', 'id_client' => self::CLIENT_ID]));
 
+        DB::table('client')->insert(['id' => self::CLIENT_ID, 'nama' => 'PT Pgsol']);
         DB::table('users')->insert(['id' => 349, 'first_name' => 'WIYONO', 'empid' => '05192570', 'id_client' => self::CLIENT_ID]);
         DB::table('sppd_approval_configs')->insert(['id' => 1]);
         DB::table('sppd_approval_config_steps')->insert([
@@ -139,7 +146,7 @@ class SppdDetailPayloadTest extends TestCase
     {
         foreach ([
             'sppd_approval_logs', 'sppd_attachments', 'sppd_costs', 'sppd_approval_config_steps', 'sppd_approval_configs',
-            'sppd', 'karyawan_project', 'user_client_access', 'users',
+            'sppd', 'karyawan_project', 'client', 'user_client_access', 'users',
         ] as $table) {
             Schema::dropIfExists($table);
         }
@@ -253,6 +260,33 @@ class SppdDetailPayloadTest extends TestCase
         $this->assertNull($logs[2]['step_order']);
         $this->assertNull($logs[2]['step_name']);
         $this->assertSame('Nominal salah', $logs[2]['notes']);
+    }
+
+    /**
+     * Each log row names who acted and its Asal Approval, with the same labels as SIP - KPU:
+     * "SIP - KPU" for the PIC step, "Primova - <Nama Client>" for the client step.
+     *
+     * @return void
+     */
+    public function test_log_shows_approver_and_asal_approval(): void
+    {
+        DB::table('users')->insert([
+            ['id' => 501, 'first_name' => 'Budi', 'last_name' => 'Santoso', 'empid' => null, 'id_client' => null],
+            ['id' => 502, 'first_name' => 'Rina', 'last_name' => null, 'empid' => null, 'id_client' => self::CLIENT_ID],
+        ]);
+        // KPU staff account with a blank first_name: the account name is shown instead
+        DB::table('users')->insert(['id' => 503, 'first_name' => ' ', 'last_name' => null, 'name' => 'KPUuser']);
+        DB::table('sppd_approval_logs')->insert([
+            ['id' => 1, 'sppd_id' => 9, 'step_id' => 4, 'step_order' => 1, 'approver_id' => 501, 'status' => 'approved', 'acted_at' => '2026-10-25 20:05:00', 'acted_from' => 'payroll'],
+            ['id' => 2, 'sppd_id' => 9, 'step_id' => 5, 'step_order' => 2, 'approver_id' => 502, 'status' => 'approved', 'acted_at' => '2026-10-25 20:06:00', 'acted_from' => 'clientkpu'],
+            ['id' => 3, 'sppd_id' => 9, 'step_id' => null, 'step_order' => 0, 'approver_id' => null, 'status' => 'reset', 'acted_at' => '2026-10-26 09:00:00', 'acted_from' => null],
+            ['id' => 4, 'sppd_id' => 9, 'step_id' => null, 'step_order' => 0, 'approver_id' => 503, 'status' => 'reset', 'acted_at' => '2026-10-26 10:00:00', 'acted_from' => 'payroll'],
+        ]);
+
+        $logs = $this->detail()['approval_logs'];
+
+        $this->assertSame(['Budi Santoso', 'Rina', '-', 'KPUuser'], array_column($logs, 'approver'));
+        $this->assertSame(['SIP - KPU', 'Primova - PT Pgsol', '-', 'SIP - KPU'], array_column($logs, 'acted_from'));
     }
 
     /**

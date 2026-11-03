@@ -18,7 +18,7 @@ class SppdDetailPresenter
      */
     public static function relations(): array
     {
-        return ['karyawan', 'karyawanProject', 'approvalConfig.steps', 'costs', 'attachments', 'approvalLogs.step'];
+        return ['karyawan', 'karyawanProject', 'approvalConfig.steps', 'costs', 'attachments', 'client', 'approvalLogs.step', 'approvalLogs.approver'];
     }
 
     /**
@@ -71,7 +71,7 @@ class SppdDetailPresenter
                 'file_name' => $att->original_name,
                 'url'       => $att->url,
             ])->values(),
-            'approval_logs'          => $sppd->approvalLogs->map(fn ($log) => $this->presentLog($log, $stepNames))->values(),
+            'approval_logs'          => $sppd->approvalLogs->map(fn ($log) => $this->presentLog($log, $stepNames, $sppd->client?->nama))->values(),
         ];
     }
 
@@ -81,11 +81,14 @@ class SppdDetailPresenter
      * The step name comes from the step the log was written for. That link is lost when the approval config
      * is edited (its steps are recreated), so a log without it falls back to the SPPD's config step with the same number.
      *
-     * @param  SppdApprovalLog  $log  With the `step` relation loaded
+     * Approver and Asal Approval ("Dari") are shown the same way as in the Log Approval of SIP - KPU.
+     *
+     * @param  SppdApprovalLog  $log  With the `step` and `approver` relations loaded
      * @param  \Illuminate\Support\Collection<int, string>  $stepNames  Step names of the SPPD's approval config, keyed by step number
+     * @param  string|null  $clientName  Name of the SPPD's client, for the "Primova - <Nama Client>" label
      * @return array<string, mixed>
      */
-    private function presentLog(SppdApprovalLog $log, $stepNames): array
+    private function presentLog(SppdApprovalLog $log, $stepNames, ?string $clientName): array
     {
         $isReset = $log->status === SppdApprovalLog::STATUS_RESET;
 
@@ -94,7 +97,8 @@ class SppdDetailPresenter
             'step_name'  => $isReset ? null : ($log->step?->step_name ?? $stepNames->get($log->step_order)),
             'status'     => $log->status,
             'notes'      => $log->notes,
-            'acted_from' => $log->acted_from,
+            'approver'   => $log->approverName(),
+            'acted_from' => $log->actedFromLabel($clientName),
             'acted_at'   => $log->acted_at ? $log->acted_at->format('d/m/Y H:i') : '-',
         ];
     }

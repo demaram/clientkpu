@@ -71,13 +71,15 @@ function detailSppd(id) {
                 logHtml += '<tr>' +
                     '<td>' + (log.step_order ?? '-') + '</td>' +
                     '<td>' + escapeHtml(log.step_name ?? '-') + '</td>' +
+                    '<td>' + escapeHtml(log.approver ?? '-') + '</td>' +
                     '<td>' + statusBadge(log.status) + '</td>' +
                     '<td>' + escapeHtml(log.notes ?? '-') + '</td>' +
                     '<td>' + (log.acted_at ?? '-') + '</td>' +
+                    '<td>' + escapeHtml(log.acted_from ?? '-') + '</td>' +
                     '</tr>';
             });
         } else {
-            logHtml = '<tr><td colspan="5" class="text-center">Belum ada log approval.</td></tr>';
+            logHtml = '<tr><td colspan="7" class="text-center">Belum ada log approval.</td></tr>';
         }
         $('#detail-logs-body').html(logHtml);
 
